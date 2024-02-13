@@ -33,7 +33,12 @@ struct Chunk {
 
     Block blockGrid[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE];
 
-    std::vector<Face> faces = std::vector<Face>();
+    std::vector<Face> positiveXFaces = std::vector<Face>();
+    std::vector<Face> negativeXFaces = std::vector<Face>();
+    std::vector<Face> positiveYFaces = std::vector<Face>();
+    std::vector<Face> negativeYFaces = std::vector<Face>();
+    std::vector<Face> positiveZFaces = std::vector<Face>();
+    std::vector<Face> negativeZFaces = std::vector<Face>();
 
     void generateBlocks( const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE);
 

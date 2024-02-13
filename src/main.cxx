@@ -305,8 +305,8 @@ private:
         blocksFile >> blocks;
 
         for (Json::Value::ArrayIndex i = 0; i < blocks["blockTypes"].size(); i++) {
-            //if (blockTypes.count((BlockID) blocks["blockTypes"][i]["ID"].asInt()) > 0)
-            //    throw std::runtime_error("Block ID already exists\n\tAttempting to replace "+blockTypes[i].name+" with "+blocks["blockTypes"][i]["name"].asString());
+            if (blockTypes.count(blocks["blockTypes"][i]["ID"].asInt()) > 0)
+                throw std::runtime_error("Block ID already exists\n\tAttempting to replace "+blockTypes[i].name+" with "+blocks["blockTypes"][i]["name"].asString());
             blockTypes[i].ID = blocks["blockTypes"][i]["ID"].asInt();
             blockTypes[i].name = blocks["blockTypes"][i]["name"].asString();
             for (int j = 0; j < NUMBER_OF_ORIENTATIONS; j++) {
@@ -1789,7 +1789,52 @@ private:
             for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
                 for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
                     getChunk(i, j, k)->generateMesh();
-                    for (Face face : getChunk(i, j, k)->faces)
+                    for (Face face : getChunk(i, j, k)->positiveXFaces)
+                        uploadFace(face);
+                }
+            }
+        }
+        for (int i = CHUNK_GRID_X_SIZE-1; i >= 0; i--) {
+            for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
+                for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
+                    getChunk(i, j, k)->generateMesh();
+                    for (Face face : getChunk(i, j, k)->negativeXFaces)
+                        uploadFace(face);
+                }
+            }
+        }
+        for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
+            for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
+                for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
+                    getChunk(i, j, k)->generateMesh();
+                    for (Face face : getChunk(i, j, k)->positiveYFaces)
+                        uploadFace(face);
+                }
+            }
+        }
+        for (int j = CHUNK_GRID_Y_SIZE-1; j >= 0; j--) {
+            for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
+                for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
+                    getChunk(i, j, k)->generateMesh();
+                    for (Face face : getChunk(i, j, k)->negativeYFaces)
+                        uploadFace(face);
+                }
+            }
+        }
+        for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
+            for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
+                for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
+                    getChunk(i, j, k)->generateMesh();
+                    for (Face face : getChunk(i, j, k)->positiveZFaces)
+                        uploadFace(face);
+                }
+            }
+        }
+        for (int k = CHUNK_GRID_Z_SIZE-1; k >= 0; k--) {
+            for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
+                for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
+                    getChunk(i, j, k)->generateMesh();
+                    for (Face face : getChunk(i, j, k)->negativeZFaces)
                         uploadFace(face);
                 }
             }

@@ -22,7 +22,7 @@ void Chunk::generateBlocks(const siv::PerlinNoise &terrainNoise, const int WORLD
                 x = this->x + i;
                 y = this->y + j;
                 z = this->z + k;
-                int blockID = terrainNoise.noise3D_01(x/16.0f, y/16.0f, z/16.0f) >= (float) (z)/WORLD_Z_SIZE  ? 2 : 0;
+                int blockID = terrainNoise.noise3D_01(x/16.0f, y/16.0f, z/16.0f) >= (float) (z)/WORLD_Z_SIZE  ? 11 : 0;
                 blockGrid[i][j][k] = Block(blockID);
             }
         }
@@ -35,23 +35,23 @@ void Chunk::generateMesh() {
         for (int j = 0; j < CHUNK_SIZE; j++) {
             for (int k = 0; k < CHUNK_SIZE; k++) {
                 if (blockGrid[i][j][k].ID != 0) {
-                    if (i == 0 || blockGrid[i - 1][j][k].ID == 0) {
-                        faces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, blockGrid[i][j][k].ID));
-                    }
                     if (i == CHUNK_SIZE - 1 || blockGrid[i + 1][j][k].ID == 0) {
-                        faces.push_back(Face(x+i, y+j, z+k, POSITIVE_X, blockGrid[i][j][k].ID));
+                        positiveXFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_X, blockGrid[i][j][k].ID));
                     }
-                    if (j == 0 || blockGrid[i][j - 1][k].ID == 0) {
-                        faces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, blockGrid[i][j][k].ID));
+                    if (i == 0 || blockGrid[i - 1][j][k].ID == 0) {
+                        negativeXFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, blockGrid[i][j][k].ID));
                     }
                     if (j == CHUNK_SIZE - 1 || blockGrid[i][j + 1][k].ID == 0) {
-                        faces.push_back(Face(x+i, y+j, z+k, POSITIVE_Y, blockGrid[i][j][k].ID));
+                        positiveYFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Y, blockGrid[i][j][k].ID));
                     }
-                    if (k == 0 || blockGrid[i][j][k - 1].ID == 0) {
-                        faces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, blockGrid[i][j][k].ID));
+                    if (j == 0 || blockGrid[i][j - 1][k].ID == 0) {
+                        negativeYFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, blockGrid[i][j][k].ID));
                     }
                     if (k == CHUNK_SIZE - 1 || blockGrid[i][j][k + 1].ID == 0) {
-                        faces.push_back(Face(x+i, y+j, z+k, POSITIVE_Z, blockGrid[i][j][k].ID));
+                        positiveZFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Z, blockGrid[i][j][k].ID));
+                    }
+                    if (k == 0 || blockGrid[i][j][k - 1].ID == 0) {
+                        negativeZFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, blockGrid[i][j][k].ID));
                     }
                 }
             }
