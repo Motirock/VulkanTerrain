@@ -22,8 +22,12 @@ void Chunk::generateBlocks(const siv::PerlinNoise &terrainNoise, const int WORLD
                 x = this->x + i;
                 y = this->y + j;
                 z = this->z + k;
-                int blockID = terrainNoise.noise3D_01(x/16.0f, y/16.0f, z/16.0f) >= (float) (z)/WORLD_Z_SIZE  ? 11 : 0;
+                int blockID = 0;
+                if (terrainNoise.noise3D_01(x/16.0f, y/16.0f, z/16.0f) >= (float) (z)/WORLD_Z_SIZE) {
+                    blockID = terrainNoise.noise3D_01(x/16.0f, y/16.0f, (z+1.0f)/16.0f) >= (float) (z+1.0f)/WORLD_Z_SIZE ? 1 : 2;
+                }
                 blockGrid[i][j][k] = Block(blockID);
+                
             }
         }
     }

@@ -83,8 +83,8 @@ if (time*TPS >= ticks) {
 using namespace VkUtils;
 
 //TODO temp
-        using namespace std::this_thread; // sleep_for, sleep_until
-        using namespace std::chrono; // nanoseconds, system_clock, seconds
+using namespace std::this_thread; //Sleep_for, sleep_until
+using namespace std::chrono; //Nanoseconds, system_clock, seconds
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -1062,7 +1062,7 @@ private:
     }
 
     void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
-        // Check if image format supports linear blitting
+        //Check if image format supports linear blitting
         VkFormatProperties formatProperties;
         vkGetPhysicalDeviceFormatProperties(physicalDevice, imageFormat, &formatProperties);
 
@@ -1203,9 +1203,9 @@ private:
         samplerInfo.compareEnable = VK_FALSE;
         samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
         samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.minLod = 0.0f; // Optional
+        samplerInfo.minLod = 0.0f; //Optional
         samplerInfo.maxLod = 0.0f;static_cast<float>(mipLevels);
-        samplerInfo.mipLodBias = 0.0f; // Optional
+        samplerInfo.mipLodBias = 0.0f; //Optional
 
         if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
             throw std::runtime_error("failed to create texture sampler!");
@@ -1654,13 +1654,15 @@ private:
     void uploadFace(Face &face) {
         uint32_t vertexCount = vertices.size();
         float textureX = blockTypes[face.blockID].textureCoordinates[face.orientation].first/16.0f, textureY = blockTypes[face.blockID].textureCoordinates[face.orientation].second/16.0f;
+        glm::vec3 normal;
 
         switch (face.orientation) {
             case POSITIVE_X:
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY)});
+                normal = glm::vec3(1.0f, 0.0f, 0.0f);
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
                 indices.push_back(vertexCount+0);
                 indices.push_back(vertexCount+1);
                 indices.push_back(vertexCount+3);
@@ -1669,10 +1671,11 @@ private:
                 indices.push_back(vertexCount+2);
                 break;
             case NEGATIVE_X:
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY)});
+                normal = glm::vec3(-1.0f, 0.0f, 0.0f);
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
                 indices.push_back(vertexCount+3);
                 indices.push_back(vertexCount+1);
                 indices.push_back(vertexCount+0);
@@ -1681,10 +1684,11 @@ private:
                 indices.push_back(vertexCount+0);
                 break;
             case POSITIVE_Y:
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY)});
+                normal = glm::vec3(0.0f, 1.0f, 0.0f);
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
                 indices.push_back(vertexCount+3);
                 indices.push_back(vertexCount+1);
                 indices.push_back(vertexCount+0);
@@ -1693,10 +1697,11 @@ private:
                 indices.push_back(vertexCount+0);
                 break;
             case NEGATIVE_Y:
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY)});
+                normal = glm::vec3(0.0f, -1.0f, 0.0f);
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
                 indices.push_back(vertexCount+0);
                 indices.push_back(vertexCount+1);
                 indices.push_back(vertexCount+3);
@@ -1705,17 +1710,18 @@ private:
                 indices.push_back(vertexCount+2);
                 break;
             case POSITIVE_Z:
-                if (textureX == 0.0f && textureY == 0.0f) {
-                    vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(0.2f, 1.0f, 0.2f), glm::vec2(textureX, textureY+1.0f/16.0f)});
-                    vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(0.2f, 1.0f, 0.2f), glm::vec2(textureX, textureY)});
-                    vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(0.2f, 1.0f, 0.2f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f)});
-                    vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(0.2f, 1.0f, 0.2f), glm::vec2(textureX+1.0f/16.0f, textureY)});
+                normal = glm::vec3(0.0f, 0.0f, 1.0f);
+                if (face.blockID == 2) {
+                    vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(0.2f, 0.9f, 0.1f), glm::vec2(textureX, textureY+1.0f/16.0f), normal});
+                    vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(0.2f, 0.9f, 0.1f), glm::vec2(textureX, textureY), normal});
+                    vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(0.2f, 0.9f, 0.1f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f), normal});
+                    vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(0.2f, 0.9f, 0.1f), glm::vec2(textureX+1.0f/16.0f, textureY), normal});
                 }
                 else {
-                    vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f)});
-                    vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY)});
-                    vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f)});
-                    vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY)});
+                    vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f), normal});
+                    vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
+                    vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f), normal});
+                    vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY), normal});
                 }
                 indices.push_back(vertexCount+0);
                 indices.push_back(vertexCount+1);
@@ -1725,10 +1731,11 @@ private:
                 indices.push_back(vertexCount+2);
                 break;
             case NEGATIVE_Z:
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f)});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY)}); 
+                normal = glm::vec3(0.0f, 0.0f, -1.0f);
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY), normal}); 
                 indices.push_back(vertexCount+3);
                 indices.push_back(vertexCount+1);
                 indices.push_back(vertexCount+0);
