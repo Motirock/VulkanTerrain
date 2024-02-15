@@ -89,8 +89,8 @@ using namespace std::chrono; //Nanoseconds, system_clock, seconds
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
-const uint32_t MAX_VERTEX_MEMORY = 2'00'000*sizeof(Vertex);
-const uint32_t MAX_INDEX_MEMORY = 2'50'000*sizeof(uint32_t);
+const uint32_t MAX_VERTEX_MEMORY = 250'000*sizeof(Vertex);
+const uint32_t MAX_INDEX_MEMORY = 250'000*sizeof(uint32_t);
 //const uint32_t CHUNK_MAX_VERTEX_MEMORY = 2'00'000*sizeof(Vertex);
 //const uint32_t CHUNK_MAX_INDEX_MEMORY = 2'50'000*sizeof(uint32_t);
 
@@ -248,7 +248,7 @@ private:
 
     bool blocksChanged = true;
 
-    const static int CHUNK_GRID_X_SIZE = 2, CHUNK_GRID_Y_SIZE = 2, CHUNK_GRID_Z_SIZE = 2;
+    const static int CHUNK_GRID_X_SIZE = 4, CHUNK_GRID_Y_SIZE = 4, CHUNK_GRID_Z_SIZE = 4;
     const static int WORLD_X_SIZE = CHUNK_GRID_X_SIZE*CHUNK_SIZE, WORLD_Y_SIZE = CHUNK_GRID_Y_SIZE*CHUNK_SIZE, WORLD_Z_SIZE = CHUNK_GRID_Z_SIZE*CHUNK_SIZE;
     Chunk *chunkGrid[CHUNK_GRID_X_SIZE*CHUNK_GRID_Y_SIZE*CHUNK_GRID_Z_SIZE];
 
@@ -1747,43 +1747,11 @@ private:
     }
 
     void uploadVertices() {
-        //vertices.clear();
-        /*vertices.push_back(Vertex{glm::vec3(0.0f, 0.0f, 100.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(0.0f, 0.0f)});
-        vertices.push_back(Vertex{glm::vec3(100.0f, 100.0f, 100.0f), glm::vec3(1.0f, 1.0f, 0.0f), glm::vec2(1.0f, 0.0f)});
-        vertices.push_back(Vertex{glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 1.0f)});
-        vertices.push_back(Vertex{glm::vec3(100.0f, 100.0f, 0.0f), glm::vec3(1.0f, 0.0f, 1.0f), glm::vec2(1.0f, 1.0f)});
-
-        vertices.push_back(Vertex{glm::vec3(100.0f, 100.0f, 0.0f), glm::vec3(1.0f, 0.0f, 1.0f), glm::vec2(1.0f, 1.0f)});*/
-
-
         VkDeviceSize bufferSize = vertices.size()*sizeof(Vertex);
         memcpy(vertexData, vertices.data(), bufferSize);
     }
 
     void uploadIndices() {
-        //indices.clear();
-
-        uint32_t vertexCount = 0;
-
-        {
-        /*indices.push_back(0);
-        indices.push_back(1);
-        indices.push_back(2);
-        indices.push_back(2);
-        indices.push_back(1);
-        indices.push_back(0);
-
-        indices.push_back(2);
-        indices.push_back(3);
-        indices.push_back(1);
-        indices.push_back(1);
-        indices.push_back(3);
-        indices.push_back(2);*/
-        }
-        vertexCount = vertices.size();
-
-
-
         VkDeviceSize bufferSize = indices.size()*sizeof(uint32_t);
         memcpy(indexData, indices.data(), bufferSize);
     }
@@ -1792,60 +1760,122 @@ private:
         vertices.clear();
         indices.clear();
 
+        Chunk *borderingChunk = NULL;
         for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
             for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
                 for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
-                    getChunk(i, j, k)->generateMesh();
-                    for (Face face : getChunk(i, j, k)->positiveXFaces)
-                        uploadFace(face);
+                    if (i < CHUNK_GRID_X_SIZE-1) {
+                        borderingChunk = getChunk(i+1, j, k);
+                        if (borderingChunk->blocksChanged) {
+                            getChunk(i, j, k)->generateMesh(POSITIVE_X, borderingChunk);
+                            for (Face face : getChunk(i, j, k)->positiveXFaces)
+                                uploadFace(face);
+                        }
+                    }
+                    else {
+                        getChunk(i, j, k)->generateMesh(POSITIVE_X, NULL);
+                        for (Face face : getChunk(i, j, k)->positiveXFaces)
+                            uploadFace(face);
+                    }
                 }
             }
         }
         for (int i = CHUNK_GRID_X_SIZE-1; i >= 0; i--) {
             for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
                 for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
-                    getChunk(i, j, k)->generateMesh();
-                    for (Face face : getChunk(i, j, k)->negativeXFaces)
-                        uploadFace(face);
+                    if (i > 0) {
+                        borderingChunk = getChunk(i-1, j, k);
+                        if (borderingChunk->blocksChanged) {
+                            getChunk(i, j, k)->generateMesh(NEGATIVE_X, borderingChunk);
+                            for (Face face : getChunk(i, j, k)->negativeXFaces)
+                                uploadFace(face);
+                        }
+                    }
+                    else {
+                        getChunk(i, j, k)->generateMesh(NEGATIVE_X, NULL);
+                        for (Face face : getChunk(i, j, k)->negativeXFaces)
+                            uploadFace(face);
+                    }
                 }
             }
         }
         for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
             for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
                 for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
-                    getChunk(i, j, k)->generateMesh();
-                    for (Face face : getChunk(i, j, k)->positiveYFaces)
-                        uploadFace(face);
+                    if (j < CHUNK_GRID_Y_SIZE-1) {
+                        borderingChunk = getChunk(i, j+1, k);
+                        if (borderingChunk->blocksChanged) {
+                            getChunk(i, j, k)->generateMesh(POSITIVE_Y, borderingChunk);
+                            for (Face face : getChunk(i, j, k)->positiveYFaces)
+                                uploadFace(face);
+                        }
+                    }
+                    else {
+                        getChunk(i, j, k)->generateMesh(POSITIVE_Y, NULL);
+                        for (Face face : getChunk(i, j, k)->positiveYFaces)
+                            uploadFace(face);
+                    }
                 }
             }
         }
         for (int j = CHUNK_GRID_Y_SIZE-1; j >= 0; j--) {
             for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
                 for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
-                    getChunk(i, j, k)->generateMesh();
-                    for (Face face : getChunk(i, j, k)->negativeYFaces)
-                        uploadFace(face);
+                    if (j > 0) {
+                        borderingChunk = getChunk(i, j-1, k);
+                        if (borderingChunk->blocksChanged) {
+                            getChunk(i, j, k)->generateMesh(NEGATIVE_Y, borderingChunk);
+                            for (Face face : getChunk(i, j, k)->negativeYFaces)
+                                uploadFace(face);
+                        }
+                    }
+                    else {
+                        getChunk(i, j, k)->generateMesh(NEGATIVE_Y, NULL);
+                        for (Face face : getChunk(i, j, k)->negativeYFaces)
+                            uploadFace(face);
+                    }
                 }
             }
         }
         for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
             for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
                 for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
-                    getChunk(i, j, k)->generateMesh();
-                    for (Face face : getChunk(i, j, k)->positiveZFaces)
-                        uploadFace(face);
+                    if (k < CHUNK_GRID_Z_SIZE-1) {
+                        borderingChunk = getChunk(i, j, k+1);
+                        if (borderingChunk->blocksChanged) {
+                            getChunk(i, j, k)->generateMesh(POSITIVE_Z, borderingChunk);
+                            for (Face face : getChunk(i, j, k)->positiveZFaces)
+                                uploadFace(face);
+                        }
+                    }
+                    else {
+                        getChunk(i, j, k)->generateMesh(POSITIVE_Z, NULL);
+                        for (Face face : getChunk(i, j, k)->positiveZFaces)
+                            uploadFace(face);
+                    }
                 }
             }
         }
         for (int k = CHUNK_GRID_Z_SIZE-1; k >= 0; k--) {
             for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
                 for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
-                    getChunk(i, j, k)->generateMesh();
-                    for (Face face : getChunk(i, j, k)->negativeZFaces)
-                        uploadFace(face);
+                    if (k > 0) {
+                        borderingChunk = getChunk(i, j, k-1);
+                        if (borderingChunk->blocksChanged) {
+                            getChunk(i, j, k)->generateMesh(NEGATIVE_Z, borderingChunk);
+                            for (Face face : getChunk(i, j, k)->negativeZFaces)
+                                uploadFace(face);
+                        }
+                    }
+                    else {
+                        getChunk(i, j, k)->generateMesh(NEGATIVE_Z, NULL);
+                        for (Face face : getChunk(i, j, k)->negativeZFaces)
+                            uploadFace(face);
+                    }
                 }
             }
         }
+        //throw std::runtime_error(std::to_string(vertices.size())+" "+std::to_string(indices.size())+"\n");
 
         uploadVertices();
         uploadIndices();
