@@ -38,7 +38,6 @@ void Chunk::generateBlocks(const siv::PerlinNoise &terrainNoise, const int WORLD
                 
                 //Bottom bedrock layer
                 if (z == 0) {
-                    std::cout << getElevation(x, y, z, terrainNoise, WORLD_Z_SIZE) << std::endl;
                     Block block = Block(2);
                     setBlock(i, j, k, block);
                     continue;
@@ -46,8 +45,22 @@ void Chunk::generateBlocks(const siv::PerlinNoise &terrainNoise, const int WORLD
 
                 int blockID = 0;
                 
+                //Fill in
                 if (getElevation(x, y, z, terrainNoise, WORLD_Z_SIZE) >= z) {
-                    blockID = getElevation(x, y, z+1.0f, terrainNoise, WORLD_Z_SIZE) >= z+1.0f ? 3 : 4;
+                    //Dirt or stone
+                    if (blockID = getElevation(x, y, z+1.0f, terrainNoise, WORLD_Z_SIZE) >= z+1.0f) {
+                        blockID = 1;
+                        std::cout << (int) (terrainNoise.noise1D_01(x+y)*3.0f+1.0f) << "\n";
+                        for (int i = 1; i <= (int) (terrainNoise.noise1D_01(x+y)*3.0f+1.0f); i++) {
+                            if (getElevation(x, y, z+i, terrainNoise, WORLD_Z_SIZE) < z+i) {
+                                blockID = 3;
+                                break;
+                            }
+                        }
+                    }
+                    //Grass
+                    else
+                        blockID = 4;
                 }
                 Block block = Block(blockID);
                 setBlock(i, j, k, block);
@@ -234,5 +247,127 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk) {
     }
     }
 
-    std::cout << "Generated mesh for chunk " << x << " " << y << " " << z << " " << positiveXFaces.size() << std::endl;
+    //std::cout << "Generated mesh for chunk " << x << " " << y << " " << z << " " << positiveXFaces.size() << std::endl;
 } 
+
+void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
+        uint32_t vertexCount = vertices.size();
+        float textureX = blockTypes[face.blockID].textureCoordinates[face.orientation].first/8.0f, textureY = blockTypes[face.blockID].textureCoordinates[face.orientation].second/8.0f;
+        glm::vec3 normal;
+
+        switch (face.orientation) {
+            case POSITIVE_X:
+                normal = glm::vec3(1.0f, 0.0f, 0.0f);
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
+                indices.push_back(vertexCount+0);
+                indices.push_back(vertexCount+1);
+                indices.push_back(vertexCount+3);
+                indices.push_back(vertexCount+0);
+                indices.push_back(vertexCount+3);
+                indices.push_back(vertexCount+2);
+                break;
+            case NEGATIVE_X:
+                normal = glm::vec3(-1.0f, 0.0f, 0.0f);
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
+                indices.push_back(vertexCount+3);
+                indices.push_back(vertexCount+1);
+                indices.push_back(vertexCount+0);
+                indices.push_back(vertexCount+2);
+                indices.push_back(vertexCount+3);
+                indices.push_back(vertexCount+0);
+                break;
+            case POSITIVE_Y:
+                normal = glm::vec3(0.0f, 1.0f, 0.0f);
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
+                indices.push_back(vertexCount+3);
+                indices.push_back(vertexCount+1);
+                indices.push_back(vertexCount+0);
+                indices.push_back(vertexCount+2);
+                indices.push_back(vertexCount+3);
+                indices.push_back(vertexCount+0);
+                break;
+            case NEGATIVE_Y:
+                normal = glm::vec3(0.0f, -1.0f, 0.0f);
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
+                indices.push_back(vertexCount+0);
+                indices.push_back(vertexCount+1);
+                indices.push_back(vertexCount+3);
+                indices.push_back(vertexCount+0);
+                indices.push_back(vertexCount+3);
+                indices.push_back(vertexCount+2);
+                break;
+            case POSITIVE_Z:
+                normal = glm::vec3(0.0f, 0.0f, 1.0f);
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY), normal});
+                indices.push_back(vertexCount+0);
+                indices.push_back(vertexCount+1);
+                indices.push_back(vertexCount+3);
+                indices.push_back(vertexCount+0);
+                indices.push_back(vertexCount+3);
+                indices.push_back(vertexCount+2);
+                break;
+            case NEGATIVE_Z:
+                normal = glm::vec3(0.0f, 0.0f, -1.0f);
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY+1.0f/16.0f), normal});
+                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/16.0f, textureY), normal}); 
+                indices.push_back(vertexCount+3);
+                indices.push_back(vertexCount+1);
+                indices.push_back(vertexCount+0);
+                indices.push_back(vertexCount+2);
+                indices.push_back(vertexCount+3);
+                indices.push_back(vertexCount+0);
+                break;
+        }
+    }
+
+void Chunk::uploadFaces(Orientation orientation, std::map<int, BlockType> &blockTypes) {
+    switch (orientation) {
+    case POSITIVE_X:
+        for (Face &face : positiveXFaces) {
+            uploadFace(face, blockTypes);
+        }
+        break;
+    case NEGATIVE_X:
+        for (Face &face : negativeXFaces) {
+            uploadFace(face, blockTypes);
+        }
+        break;
+    case POSITIVE_Y:
+        for (Face &face : positiveYFaces) {
+            uploadFace(face, blockTypes);
+        }
+        break;
+    case NEGATIVE_Y:
+        for (Face &face : negativeYFaces) {
+            uploadFace(face, blockTypes);
+        }
+        break;
+    case POSITIVE_Z:
+        for (Face &face : positiveZFaces) {
+            uploadFace(face, blockTypes);
+        }
+        break;
+    case NEGATIVE_Z:
+        for (Face &face : negativeZFaces) {
+            uploadFace(face, blockTypes);
+        }
+        break;
+    }
+}

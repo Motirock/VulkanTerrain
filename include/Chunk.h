@@ -5,6 +5,7 @@
 
 #include "PerlinNoise.hpp"
 #include "Block.h"
+#include <map>
 
 using namespace VkUtils;
 
@@ -35,7 +36,7 @@ struct Chunk {
 
     bool blocksChanged = true;
 
-    /*std::vector<Vertex> vertices;
+    std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     uint32_t maxVertexCount = 0;
     VkBuffer vertexBuffer;
@@ -43,7 +44,7 @@ struct Chunk {
     VkBuffer indexBuffer;
     VkDeviceMemory indexBufferMemory;
     void *vertexData;
-    void *indexData;*/
+    void *indexData;
 
     Block blockGrid[CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE];
 
@@ -63,6 +64,9 @@ struct Chunk {
 
     void generateBlocks( const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE);
     void generateMesh(Orientation orientation, Chunk *borderingChunk);
+
+    void uploadFace(Face &face, std::map<int, BlockType> &blockTypes);
+    void uploadFaces(Orientation orientation, std::map<int, BlockType> &blockTypes);
 };
 
 #endif
