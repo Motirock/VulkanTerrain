@@ -59,6 +59,8 @@ struct Chunk {
     Block& getBlock(int x, int y, int z);
     void setBlock(int x, int y, int z, Block &block); 
 
+    float getElevation(int x, int y, int z, const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE);
+
     void generateBlocks( const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE);
     void generateMesh(Orientation orientation, Chunk *borderingChunk);
 };

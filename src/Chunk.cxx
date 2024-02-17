@@ -21,6 +21,10 @@ void Chunk::setBlock(int x, int y, int z, Block &block) {
     blocksChanged = true;
 }
 
+float Chunk::getElevation(int x, int y, int z, const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE) {
+    return (terrainNoise.noise2D_01(x/16.0f, y/16.0f)*0.6 + terrainNoise.noise3D_01(x/16.0f, y/16.0f, z/16.0f)*0.4) * WORLD_Z_SIZE;
+}
+
 void Chunk::generateBlocks(const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE) {
     int x = 0;
     int y = 0;
@@ -31,9 +35,19 @@ void Chunk::generateBlocks(const siv::PerlinNoise &terrainNoise, const int WORLD
                 x = this->x + i;
                 y = this->y + j;
                 z = this->z + k;
+                
+                //Bottom bedrock layer
+                if (z == 0) {
+                    std::cout << getElevation(x, y, z, terrainNoise, WORLD_Z_SIZE) << std::endl;
+                    Block block = Block(2);
+                    setBlock(i, j, k, block);
+                    continue;
+                }
+
                 int blockID = 0;
-                if (terrainNoise.noise3D_01(x/16.0f, y/16.0f, z/16.0f) >= (float) (z)/WORLD_Z_SIZE) {
-                    blockID = terrainNoise.noise3D_01(x/16.0f, y/16.0f, (z+1.0f)/16.0f) >= (float) (z+1.0f)/WORLD_Z_SIZE ? 1 : 2;
+                
+                if (getElevation(x, y, z, terrainNoise, WORLD_Z_SIZE) >= z) {
+                    blockID = getElevation(x, y, z+1.0f, terrainNoise, WORLD_Z_SIZE) >= z+1.0f ? 3 : 4;
                 }
                 Block block = Block(blockID);
                 setBlock(i, j, k, block);
