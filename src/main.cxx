@@ -260,6 +260,14 @@ private:
         chunkGrid[x*CHUNK_GRID_Y_SIZE*CHUNK_GRID_Z_SIZE+y*CHUNK_GRID_Z_SIZE+z] = chunk;
     }
 
+    Block& getBlock(uint32_t x, uint32_t y, uint32_t z) {
+        return getChunk(x/CHUNK_SIZE, y/CHUNK_SIZE, z/CHUNK_SIZE)->getBlock(x%CHUNK_SIZE, y%CHUNK_SIZE, z%CHUNK_SIZE);
+    }
+
+    void setBlock(uint32_t x, uint32_t y, uint32_t z, Block &block) {
+        getChunk(x/CHUNK_SIZE, y/CHUNK_SIZE, z/CHUNK_SIZE)->setBlock(x%CHUNK_SIZE, y%CHUNK_SIZE, z%CHUNK_SIZE, block);
+    }
+
     WorldGenerationInfo worldGenerationInfo = WorldGenerationInfo(123u, 0.01f, 0.6f, 1.0f, 0.7f, 0.5f);
 
     std::map<int, BlockType> blockTypes;
@@ -428,8 +436,8 @@ private:
             glfwPollEvents();
             if (time*TPS >= ticks) {
                 input();
-                if (blocksChanged)
-                    updateVertices();
+                //if (blocksChanged)
+                    update();
                 drawFrame();
                 #ifdef SHOW_POSITION
                 std::cout << "X Y Z: " << cameraPos.x << " " << cameraPos.y << " " << cameraPos.z << "\n";
@@ -1756,7 +1764,21 @@ private:
         memcpy(indexData, indices.data(), bufferSize);
     }
 
-    void updateVertices() {
+    void update() {
+        if (cameraPos.x >= 0 && cameraPos.x < CHUNK_GRID_X_SIZE*CHUNK_SIZE && cameraPos.y >= 0 && cameraPos.y < CHUNK_GRID_Y_SIZE*CHUNK_SIZE && cameraPos.z-5 >= 0 && cameraPos.z-5 < CHUNK_GRID_Z_SIZE*CHUNK_SIZE) {
+            Block block = Block(5);
+            //setBlock((int) cameraPos.x, (int) cameraPos.y, (int) cameraPos.z-5, block);
+            //std::cout << getBlock((int) cameraPos.x, (int) cameraPos.y, (int) cameraPos.z-5).ID << "\n";
+        }
+
+        blocksChanged = false;
+        for (int i = 0; i < CHUNK_GRID_X_SIZE; i++)
+            for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++)
+                for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++)
+                    if (getChunk(i, j, k)->blocksChanged)
+                        blocksChanged = true;
+        
+        if (blocksChanged) {
         vertices.clear();
         indices.clear();
 
@@ -1766,11 +1788,9 @@ private:
                 for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
                     if (i < CHUNK_GRID_X_SIZE-1) {
                         borderingChunk = getChunk(i+1, j, k);
-                        if (borderingChunk->blocksChanged) {
-                            getChunk(i, j, k)->generateMesh(POSITIVE_X, borderingChunk);
-                            for (Face face : getChunk(i, j, k)->positiveXFaces)
-                                uploadFace(face);
-                        }
+                        getChunk(i, j, k)->generateMesh(POSITIVE_X, borderingChunk);
+                        for (Face face : getChunk(i, j, k)->positiveXFaces)
+                            uploadFace(face);
                     }
                     else {
                         getChunk(i, j, k)->generateMesh(POSITIVE_X, NULL);
@@ -1785,11 +1805,9 @@ private:
                 for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
                     if (i > 0) {
                         borderingChunk = getChunk(i-1, j, k);
-                        if (borderingChunk->blocksChanged) {
-                            getChunk(i, j, k)->generateMesh(NEGATIVE_X, borderingChunk);
-                            for (Face face : getChunk(i, j, k)->negativeXFaces)
-                                uploadFace(face);
-                        }
+                        getChunk(i, j, k)->generateMesh(NEGATIVE_X, borderingChunk);
+                        for (Face face : getChunk(i, j, k)->negativeXFaces)
+                            uploadFace(face);
                     }
                     else {
                         getChunk(i, j, k)->generateMesh(NEGATIVE_X, NULL);
@@ -1804,11 +1822,9 @@ private:
                 for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
                     if (j < CHUNK_GRID_Y_SIZE-1) {
                         borderingChunk = getChunk(i, j+1, k);
-                        if (borderingChunk->blocksChanged) {
-                            getChunk(i, j, k)->generateMesh(POSITIVE_Y, borderingChunk);
-                            for (Face face : getChunk(i, j, k)->positiveYFaces)
-                                uploadFace(face);
-                        }
+                        getChunk(i, j, k)->generateMesh(POSITIVE_Y, borderingChunk);
+                        for (Face face : getChunk(i, j, k)->positiveYFaces)
+                            uploadFace(face);
                     }
                     else {
                         getChunk(i, j, k)->generateMesh(POSITIVE_Y, NULL);
@@ -1823,11 +1839,9 @@ private:
                 for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
                     if (j > 0) {
                         borderingChunk = getChunk(i, j-1, k);
-                        if (borderingChunk->blocksChanged) {
-                            getChunk(i, j, k)->generateMesh(NEGATIVE_Y, borderingChunk);
-                            for (Face face : getChunk(i, j, k)->negativeYFaces)
-                                uploadFace(face);
-                        }
+                        getChunk(i, j, k)->generateMesh(NEGATIVE_Y, borderingChunk);
+                        for (Face face : getChunk(i, j, k)->negativeYFaces)
+                            uploadFace(face);
                     }
                     else {
                         getChunk(i, j, k)->generateMesh(NEGATIVE_Y, NULL);
@@ -1842,11 +1856,9 @@ private:
                 for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
                     if (k < CHUNK_GRID_Z_SIZE-1) {
                         borderingChunk = getChunk(i, j, k+1);
-                        if (borderingChunk->blocksChanged) {
-                            getChunk(i, j, k)->generateMesh(POSITIVE_Z, borderingChunk);
-                            for (Face face : getChunk(i, j, k)->positiveZFaces)
-                                uploadFace(face);
-                        }
+                        getChunk(i, j, k)->generateMesh(POSITIVE_Z, borderingChunk);
+                        for (Face face : getChunk(i, j, k)->positiveZFaces)
+                            uploadFace(face);
                     }
                     else {
                         getChunk(i, j, k)->generateMesh(POSITIVE_Z, NULL);
@@ -1861,11 +1873,9 @@ private:
                 for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
                     if (k > 0) {
                         borderingChunk = getChunk(i, j, k-1);
-                        if (borderingChunk->blocksChanged) {
-                            getChunk(i, j, k)->generateMesh(NEGATIVE_Z, borderingChunk);
-                            for (Face face : getChunk(i, j, k)->negativeZFaces)
-                                uploadFace(face);
-                        }
+                        getChunk(i, j, k)->generateMesh(NEGATIVE_Z, borderingChunk);
+                        for (Face face : getChunk(i, j, k)->negativeZFaces)
+                            uploadFace(face);
                     }
                     else {
                         getChunk(i, j, k)->generateMesh(NEGATIVE_Z, NULL);
@@ -1875,12 +1885,15 @@ private:
                 }
             }
         }
+        for (int i = 0; i < CHUNK_GRID_X_SIZE; i++)
+            for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++)
+                for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++)
+                    getChunk(i, j, k)->blocksChanged = false;
+        
         //throw std::runtime_error(std::to_string(vertices.size())+" "+std::to_string(indices.size())+"\n");
-
         uploadVertices();
         uploadIndices();
-
-        blocksChanged = false;
+        }
     }
 
     void drawFrame() {

@@ -45,7 +45,7 @@ struct Chunk {
     void *vertexData;
     void *indexData;*/
 
-    Block blockGrid[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE];
+    Block blockGrid[CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE];
 
     std::vector<Face> positiveXFaces = std::vector<Face>();
     std::vector<Face> negativeXFaces = std::vector<Face>();
@@ -54,9 +54,12 @@ struct Chunk {
     std::vector<Face> positiveZFaces = std::vector<Face>();
     std::vector<Face> negativeZFaces = std::vector<Face>();
 
-    void generateBlocks( const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE);
-
     Chunk(int x, int y, int z);
+
+    Block& getBlock(int x, int y, int z);
+    void setBlock(int x, int y, int z, Block &block); 
+
+    void generateBlocks( const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE);
     void generateMesh(Orientation orientation, Chunk *borderingChunk);
 };
 

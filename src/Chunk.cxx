@@ -6,10 +6,19 @@ Chunk::Chunk(int x, int y, int z) : x(x), y(y), z(z) {
     for (int i = 0; i < CHUNK_SIZE; i++) {
         for (int j = 0; j < CHUNK_SIZE; j++) {
             for (int k = 0; k < CHUNK_SIZE; k++) {
-                blockGrid[i][j][k] = Block(0);
+                getBlock(i, j, k) = Block(0);
             }
         }
     }
+}
+
+Block& Chunk::getBlock(int x, int y, int z) {
+    return blockGrid[x*CHUNK_SIZE*CHUNK_SIZE+y*CHUNK_SIZE+z];
+}
+
+void Chunk::setBlock(int x, int y, int z, Block &block) {
+    blockGrid[x*CHUNK_SIZE*CHUNK_SIZE+y*CHUNK_SIZE+z] = block;
+    blocksChanged = true;
 }
 
 void Chunk::generateBlocks(const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE) {
@@ -26,7 +35,8 @@ void Chunk::generateBlocks(const siv::PerlinNoise &terrainNoise, const int WORLD
                 if (terrainNoise.noise3D_01(x/16.0f, y/16.0f, z/16.0f) >= (float) (z)/WORLD_Z_SIZE) {
                     blockID = terrainNoise.noise3D_01(x/16.0f, y/16.0f, (z+1.0f)/16.0f) >= (float) (z+1.0f)/WORLD_Z_SIZE ? 1 : 2;
                 }
-                blockGrid[i][j][k] = Block(blockID);
+                Block block = Block(blockID);
+                setBlock(i, j, k, block);
                 
             }
         }
@@ -34,6 +44,10 @@ void Chunk::generateBlocks(const siv::PerlinNoise &terrainNoise, const int WORLD
 }
 
 void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk) {
+    if (!blocksChanged)
+        return;
+    
+    //Edge chunk
     if (borderingChunk == NULL) {
     switch (orientation) {
     case POSITIVE_X:
@@ -41,8 +55,8 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk) {
         for (int i = 0; i < CHUNK_SIZE; i++) {
             for (int j = 0; j < CHUNK_SIZE; j++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
-                    if (blockGrid[i][j][k].ID != 0 && i != CHUNK_SIZE - 1 && blockGrid[i + 1][j][k].ID == 0) {
-                        positiveXFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_X, blockGrid[i][j][k].ID));
+                    if (getBlock(i, j, k).ID != 0 && i != CHUNK_SIZE - 1 && getBlock(i + 1, j, k).ID == 0) {
+                        positiveXFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_X, getBlock(i, j, k).ID));
                     }
                 }
             }
@@ -53,8 +67,8 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk) {
         for (int i = CHUNK_SIZE-1; i >= 0; i--) {
             for (int j = 0; j < CHUNK_SIZE; j++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
-                    if (blockGrid[i][j][k].ID != 0 && i != 0 && blockGrid[i - 1][j][k].ID == 0) {
-                        negativeXFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, blockGrid[i][j][k].ID));
+                    if (getBlock(i, j, k).ID != 0 && i != 0 && getBlock(i - 1, j, k).ID == 0) {
+                        negativeXFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, getBlock(i, j, k).ID));
                     }
                 }
             }
@@ -65,8 +79,8 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk) {
         for (int j = 0; j < CHUNK_SIZE; j++) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
-                    if (blockGrid[i][j][k].ID != 0 && j != CHUNK_SIZE - 1 && blockGrid[i][j + 1][k].ID == 0) {
-                        positiveYFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Y, blockGrid[i][j][k].ID));
+                    if (getBlock(i, j, k).ID != 0 && j != CHUNK_SIZE - 1 && getBlock(i, j + 1, k).ID == 0) {
+                        positiveYFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Y, getBlock(i, j, k).ID));
                     }
                 }
             }
@@ -77,8 +91,8 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk) {
         for (int j = CHUNK_SIZE-1; j >= 0; j--) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
-                    if (blockGrid[i][j][k].ID != 0 && j != 0 && blockGrid[i][j - 1][k].ID == 0) {
-                        negativeYFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, blockGrid[i][j][k].ID));
+                    if (getBlock(i, j, k).ID != 0 && j != 0 && getBlock(i, j-1, k).ID == 0) {
+                        negativeYFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, getBlock(i, j, k).ID));
                     }
                 }
             }
@@ -89,8 +103,8 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk) {
         for (int k = 0; k < CHUNK_SIZE; k++) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int j = 0; j < CHUNK_SIZE; j++) {
-                    if (blockGrid[i][j][k].ID != 0 && k != CHUNK_SIZE - 1 && blockGrid[i][j][k + 1].ID == 0) {
-                        positiveZFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Z, blockGrid[i][j][k].ID));
+                    if (getBlock(i, j, k).ID != 0 && k != CHUNK_SIZE - 1 && getBlock(i, j, k+1).ID == 0) {
+                        positiveZFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Z, getBlock(i, j, k).ID));
                     }
                 }
             }
@@ -101,27 +115,29 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk) {
         for (int k = CHUNK_SIZE-1; k >= 0; k--) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int j = 0; j < CHUNK_SIZE; j++) {
-                    if (blockGrid[i][j][k].ID != 0 && k != 0 && blockGrid[i][j][k - 1].ID == 0) {
-                        negativeZFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, blockGrid[i][j][k].ID));
+                    if (getBlock(i, j, k).ID != 0 && k != 0 && getBlock(i, j, k-1).ID == 0) {
+                        negativeZFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, getBlock(i, j, k).ID));
                     }
                 }
             }
         }
         break;
     }
-    } else {
+    } 
+    //Non-edge chunk
+    else {
     switch (orientation) {
     case POSITIVE_X:
         positiveXFaces.clear();
         for (int i = 0; i < CHUNK_SIZE; i++) {
             for (int j = 0; j < CHUNK_SIZE; j++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
-                    if (blockGrid[i][j][k].ID == 0)
+                    if (getBlock(i, j, k).ID == 0)
                         continue;
-                    if (i == CHUNK_SIZE - 1 && borderingChunk->blockGrid[0][j][k].ID == 0)
-                        positiveXFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_X, blockGrid[i][j][k].ID));
-                    else if (i < CHUNK_SIZE-1 && blockGrid[i+1][j][k].ID == 0)
-                        positiveXFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_X, blockGrid[i][j][k].ID));
+                    if (i == CHUNK_SIZE - 1 && borderingChunk->getBlock(0, j, k).ID == 0)
+                        positiveXFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_X, getBlock(i, j, k).ID));
+                    else if (i < CHUNK_SIZE-1 && getBlock(i+1, j, k).ID == 0)
+                        positiveXFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_X, getBlock(i, j, k).ID));
                 }
             }
         }
@@ -131,12 +147,12 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk) {
         for (int i = CHUNK_SIZE-1; i >= 0; i--) {
             for (int j = 0; j < CHUNK_SIZE; j++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
-                    if (blockGrid[i][j][k].ID == 0)
+                    if (getBlock(i, j, k).ID == 0)
                         continue;
-                    if (i == 0 && borderingChunk->blockGrid[CHUNK_SIZE-1][j][k].ID == 0)
-                        negativeXFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, blockGrid[i][j][k].ID));
-                    else if (i > 0 && blockGrid[i-1][j][k].ID == 0)
-                        negativeXFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, blockGrid[i][j][k].ID));
+                    if (i == 0 && borderingChunk->getBlock(CHUNK_SIZE-1, j, k).ID == 0)
+                        negativeXFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, getBlock(i, j, k).ID));
+                    else if (i > 0 && getBlock(i-1, j, k).ID == 0)
+                        negativeXFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, getBlock(i, j, k).ID));
                 }
             }
         }
@@ -146,12 +162,12 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk) {
         for (int j = 0; j < CHUNK_SIZE; j++) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
-                    if (blockGrid[i][j][k].ID == 0)
+                    if (getBlock(i, j, k).ID == 0)
                         continue;
-                    if (j == CHUNK_SIZE - 1 && borderingChunk->blockGrid[i][0][k].ID == 0)
-                        positiveYFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Y, blockGrid[i][j][k].ID));
-                    else if (j < CHUNK_SIZE-1 && blockGrid[i][j+1][k].ID == 0)
-                        positiveYFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Y, blockGrid[i][j][k].ID));
+                    if (j == CHUNK_SIZE - 1 && borderingChunk->getBlock(i, 0, k).ID == 0)
+                        positiveYFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Y, getBlock(i, j, k).ID));
+                    else if (j < CHUNK_SIZE-1 && getBlock(i, j+1, k).ID == 0)
+                        positiveYFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Y, getBlock(i, j, k).ID));
                 }
             }
         }
@@ -161,12 +177,12 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk) {
         for (int j = CHUNK_SIZE-1; j >= 0; j--) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
-                    if (blockGrid[i][j][k].ID == 0)
+                    if (getBlock(i, j, k).ID == 0)
                         continue;
-                    if (j == 0 && borderingChunk->blockGrid[i][CHUNK_SIZE-1][k].ID == 0)
-                        negativeYFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, blockGrid[i][j][k].ID));
-                    else if (j > 0 && blockGrid[i][j-1][k].ID == 0)
-                        negativeYFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, blockGrid[i][j][k].ID));
+                    if (j == 0 && borderingChunk->getBlock(i, CHUNK_SIZE-1, k).ID == 0)
+                        negativeYFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, getBlock(i, j, k).ID));
+                    else if (j > 0 && getBlock(i, j-1, k).ID == 0)
+                        negativeYFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, getBlock(i, j, k).ID));
                 }
             }
         }
@@ -176,12 +192,12 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk) {
         for (int k = 0; k < CHUNK_SIZE; k++) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int j = 0; j < CHUNK_SIZE; j++) {
-                    if (blockGrid[i][j][k].ID == 0)
+                    if (getBlock(i, j, k).ID == 0)
                         continue;
-                    if (k == CHUNK_SIZE - 1 && borderingChunk->blockGrid[i][j][0].ID == 0)
-                        positiveZFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Z, blockGrid[i][j][k].ID));
-                    else if (k < CHUNK_SIZE-1 && blockGrid[i][j][k+1].ID == 0)
-                        positiveZFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Z, blockGrid[i][j][k].ID));
+                    if (k == CHUNK_SIZE - 1 && borderingChunk->getBlock(i, j, 0).ID == 0)
+                        positiveZFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Z, getBlock(i, j, k).ID));
+                    else if (k < CHUNK_SIZE-1 && getBlock(i, j, k+1).ID == 0)
+                        positiveZFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Z, getBlock(i, j, k).ID));
                 }
             }
         }
@@ -191,12 +207,12 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk) {
         for (int k = CHUNK_SIZE-1; k >= 0; k--) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int j = 0; j < CHUNK_SIZE; j++) {
-                    if (blockGrid[i][j][k].ID == 0)
+                    if (getBlock(i, j, k).ID == 0)
                         continue;
-                    if (k == 0 && borderingChunk->blockGrid[i][j][CHUNK_SIZE-1].ID == 0)
-                        negativeZFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, blockGrid[i][j][k].ID));
-                    else if (k > 0 && blockGrid[i][j][k-1].ID == 0)
-                        negativeZFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, blockGrid[i][j][k].ID));
+                    if (k == 0 && borderingChunk->getBlock(i, j, CHUNK_SIZE-1).ID == 0)
+                        negativeZFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, getBlock(i, j, k).ID));
+                    else if (k > 0 && getBlock(i, j, k-1).ID == 0)
+                        negativeZFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, getBlock(i, j, k).ID));
                 }
             }
         }
@@ -204,35 +220,5 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk) {
     }
     }
 
-
-
-
-
-
-    /*for (int i = 0; i < CHUNK_SIZE; i++) {
-        for (int j = 0; j < CHUNK_SIZE; j++) {
-            for (int k = 0; k < CHUNK_SIZE; k++) {
-                if (blockGrid[i][j][k].ID != 0) {
-                    if (i == CHUNK_SIZE - 1 || blockGrid[i + 1][j][k].ID == 0) {
-                        positiveXFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_X, blockGrid[i][j][k].ID));
-                    }
-                    if (i == 0 || blockGrid[i - 1][j][k].ID == 0) {
-                        negativeXFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, blockGrid[i][j][k].ID));
-                    }
-                    if (j == CHUNK_SIZE - 1 || blockGrid[i][j + 1][k].ID == 0) {
-                        positiveYFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Y, blockGrid[i][j][k].ID));
-                    }
-                    if (j == 0 || blockGrid[i][j - 1][k].ID == 0) {
-                        negativeYFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, blockGrid[i][j][k].ID));
-                    }
-                    if (k == CHUNK_SIZE - 1 || blockGrid[i][j][k + 1].ID == 0) {
-                        positiveZFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Z, blockGrid[i][j][k].ID));
-                    }
-                    if (k == 0 || blockGrid[i][j][k - 1].ID == 0) {
-                        negativeZFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, blockGrid[i][j][k].ID));
-                    }
-                }
-            }
-        }
-    }*/
+    std::cout << "Generated mesh for chunk " << x << " " << y << " " << z << " " << positiveXFaces.size() << std::endl;
 } 
