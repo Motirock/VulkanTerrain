@@ -1,10 +1,12 @@
 {
-   "blockTypeCount" : 5,
+   "blockTypeCount" : 9,
    "blockTypes" : 
    [
       {
          "ID" : 0,
          "name" : "Air",
+         "isFullOpaque" : false,
+         "hideSameNeighbors" : true,
          "textureCoordinates" : 
          [
             {
@@ -36,6 +38,8 @@
       {
          "ID" : 1,
          "name" : "Stone",
+         "isFullOpaque" : true,
+         "hideSameNeighbors" : true,
          "textureCoordinates" : 
          [
             {
@@ -67,6 +71,8 @@
       {
          "ID" : 2,
          "name" : "Bedrock",
+         "isFullOpaque" : true,
+         "hideSameNeighbors" : true,
          "textureCoordinates" : 
          [
             {
@@ -98,6 +104,8 @@
       {
          "ID" : 3,
          "name" : "Dirt",
+         "isFullOpaque" : true,
+         "hideSameNeighbors" : true,
          "textureCoordinates" : 
          [
             {
@@ -129,6 +137,8 @@
       {
          "ID" : 4,
          "name" : "Grass",
+         "isFullOpaque" : true,
+         "hideSameNeighbors" : true,
          "textureCoordinates" : 
          [
             {
@@ -154,6 +164,138 @@
             {
                "x" : 4.0,
                "y" : 0.0
+            }
+         ]
+      },
+      {
+         "ID" : 5,
+         "name" : "Sand",
+         "isFullOpaque" : true,
+         "hideSameNeighbors" : true,
+         "textureCoordinates" : 
+         [
+            {
+               "x" : 6.0,
+               "y" : 0.0
+            },
+            {
+               "x" : 6.0,
+               "y" : 0.0
+            },
+            {
+               "x" : 6.0,
+               "y" : 0.0
+            },
+            {
+               "x" : 6.0,
+               "y" : 0.0
+            },
+            {
+               "x" : 6.0,
+               "y" : 0.0
+            },
+            {
+               "x" : 6.0,
+               "y" : 0.0
+            }
+         ]
+      },
+      {
+         "ID" : 6,
+         "name" : "Water",
+         "isFullOpaque" : false,
+         "hideSameNeighbors" : true,
+         "textureCoordinates" : 
+         [
+            {
+               "x" : 7.0,
+               "y" : 0.0
+            },
+            {
+               "x" : 7.0,
+               "y" : 0.0
+            },
+            {
+               "x" : 7.0,
+               "y" : 0.0
+            },
+            {
+               "x" : 7.0,
+               "y" : 0.0
+            },
+            {
+               "x" : 7.0,
+               "y" : 0.0
+            },
+            {
+               "x" : 7.0,
+               "y" : 0.0
+            }
+         ]
+      },
+      {
+         "ID" : 7,
+         "name" : "Wood",
+         "isFullOpaque" : true,
+         "hideSameNeighbors" : true,
+         "textureCoordinates" : 
+         [
+            {
+               "x" : 0.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 0.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 0.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 0.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 1.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 1.0,
+               "y" : 1.0
+            }
+         ]
+      },
+      {
+         "ID" : 8,
+         "name" : "Leaves",
+         "isFullOpaque" : false,
+         "hideSameNeighbors" : true,
+         "textureCoordinates" : 
+         [
+            {
+               "x" : 2.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 2.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 2.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 2.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 2.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 2.0,
+               "y" : 1.0
             }
          ]
       }

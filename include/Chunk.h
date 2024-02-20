@@ -2,14 +2,25 @@
 #define CHUNK_H
 
 #include <vector>
+#include <cstring>
+#include <map>
 
 #include "PerlinNoise.hpp"
 #include "Block.h"
-#include <map>
 
 using namespace VkUtils;
 
-const uint CHUNK_SIZE = 16;
+enum GenerationMethod {
+    NORMAL_GENERATION,
+    BRAIN_GENERATION
+};
+
+enum NoiseMethod {
+    TERRAIN_NOISE,
+    CAVE_NOISE
+};
+
+const uint CHUNK_SIZE = 64;
 
 struct WorldGenerationInfo {
     uint32_t seed;
@@ -18,14 +29,16 @@ struct WorldGenerationInfo {
     float treeFrequency;
     float minTreeNoiseValue;
     float seaLevel;
+    float seaLevelThreshold;
 
-    WorldGenerationInfo(uint32_t seed, float terrainFrequency, float snowHeight, float treeFrequency, float minTreeNoiseValue, float seaLevel) {
+    WorldGenerationInfo(uint32_t seed, float terrainFrequency, float snowHeight, float treeFrequency, float minTreeNoiseValue, float seaLevel, float seaLevelThreshold) {
         this->seed = seed;
         this->terrainFrequency = terrainFrequency;
         this->snowHeight = snowHeight;
         this->treeFrequency = treeFrequency;
         this->minTreeNoiseValue = minTreeNoiseValue;
         this->seaLevel = seaLevel;
+        this->seaLevelThreshold = seaLevelThreshold;
     }
 };
 
@@ -38,6 +51,8 @@ struct Chunk {
 
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
+    uint32_t vertexCount = 0;
+    uint32_t indexCount = 0;
     uint32_t maxVertexCount = 0;
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
@@ -60,13 +75,16 @@ struct Chunk {
     Block& getBlock(int x, int y, int z);
     void setBlock(int x, int y, int z, Block &block); 
 
-    float getElevation(int x, int y, int z, const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE);
+    float getNoiseValue(int x, int y, int z, WorldGenerationInfo &worldGenerationInfo, const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE, NoiseMethod method);
 
-    void generateBlocks( const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE);
-    void generateMesh(Orientation orientation, Chunk *borderingChunk);
+    void generateBlocks(WorldGenerationInfo &worldGenerationInfo, const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE, GenerationMethod method);
+    void generateMesh(Orientation orientation, Chunk *borderingChunk, std::map<int, BlockType> &blockTypes);
 
     void uploadFace(Face &face, std::map<int, BlockType> &blockTypes);
     void uploadFaces(Orientation orientation, std::map<int, BlockType> &blockTypes);
+
+    void uploadVertices();
+    void uploadIndices();
 };
 
 #endif

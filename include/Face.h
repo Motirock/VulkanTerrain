@@ -8,14 +8,14 @@
 
 #include "VkUtils.h"
 
-enum Orientation {POSITIVE_X, NEGATIVE_X, POSITIVE_Y, NEGATIVE_Y, POSITIVE_Z, NEGATIVE_Z, NUMBER_OF_ORIENTATIONS};
-
-//enum BlockID {AIR, DIRT, GRASS, STONE, SAND, WOOD, SLAB, GRAVEL, COBBLE, PLANKS, ICE, NUMBER_OF_BLOCK_IDS};
+using namespace VkUtils;
 
 struct BlockType {
     int ID;
     std::string name;
     std::pair<float, float> textureCoordinates[NUMBER_OF_ORIENTATIONS];
+    bool isFullOpaque = true;
+    bool hideSameNeighbors = true;
 
     BlockType(int ID, std::string name, std::pair<float, float> *textureCoordinates);
     BlockType();

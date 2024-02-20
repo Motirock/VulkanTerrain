@@ -15,11 +15,12 @@
 #include <functional>
 
 namespace VkUtils {
+    enum Orientation {POSITIVE_X, NEGATIVE_X, POSITIVE_Y, NEGATIVE_Y, POSITIVE_Z, NEGATIVE_Z, NUMBER_OF_ORIENTATIONS};
+
     struct Vertex {
         glm::vec3 pos;
-        glm::vec3 color;
         glm::vec2 texCoord;
-        glm::vec3 normal;
+        uint32_t normalAndColor;
 
         static VkVertexInputBindingDescription getBindingDescription() {
             VkVertexInputBindingDescription bindingDescription{};
@@ -30,8 +31,8 @@ namespace VkUtils {
             return bindingDescription;
         }
 
-        static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
-            std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
+        static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+            std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
 
             attributeDescriptions[0].binding = 0;
             attributeDescriptions[0].location = 0;
@@ -40,27 +41,37 @@ namespace VkUtils {
 
             attributeDescriptions[1].binding = 0;
             attributeDescriptions[1].location = 1;
-            attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[1].offset = offsetof(Vertex, color);
+            attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
+            attributeDescriptions[1].offset = offsetof(Vertex, texCoord);
 
             attributeDescriptions[2].binding = 0;
             attributeDescriptions[2].location = 2;
-            attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-            attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-            attributeDescriptions[3].binding = 0;
-            attributeDescriptions[3].location = 3;
-            attributeDescriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[3].offset = offsetof(Vertex, normal);
+            attributeDescriptions[2].format = VK_FORMAT_R32_UINT;
+            attributeDescriptions[2].offset = offsetof(Vertex, normalAndColor);
 
             return attributeDescriptions;
         }
 
         bool operator==(const Vertex& other) const {
-            return pos == other.pos && color == other.color && texCoord == other.texCoord && normal == other.normal;
+            return pos == other.pos && texCoord == other.texCoord && normalAndColor == other.normalAndColor;
         }
     };
 
+    inline uint32_t packNormalAndColor(Orientation orientation, int r, int g, int b) {
+        uint32_t normalAndColor = orientation << 24;
+        normalAndColor = normalAndColor | (r << 16);
+        normalAndColor = normalAndColor | (g << 8);
+        normalAndColor = normalAndColor | b;
+        return normalAndColor;
+    }
+
+    inline uint32_t packNormalAndColor(Orientation orientation, float r, float g, float b) {
+        uint32_t normalAndColor = orientation << 24;
+        normalAndColor = normalAndColor | ((int) (r*255) << 16);
+        normalAndColor = normalAndColor | ((int) (g*255) << 8);
+        normalAndColor = normalAndColor | (int) (b*255);
+        return normalAndColor;
+    }
 }
 
 #endif
