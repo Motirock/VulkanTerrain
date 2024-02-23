@@ -17,9 +17,14 @@ layout(location = 2) out vec3 fragPosition;
 layout(location = 3) out float distanceFromCamera;
 layout(location = 4) out vec3 fragColor;
 
-vec3 normals[] = {vec3(1.0f, 0.0f, 0.0f), vec3(-1.0f, 0.0f, 0.0f), 
-    vec3(0.0f, 1.0f, 0.0f), vec3(0.0f, -1.0f, 0.0f),
-    vec3(0.0f, 0.0f, 1.0f), vec3(0.0f, 0.0f, -1.0f)};
+vec3 normals[] = {
+    vec3(1.0f, 0.0f, 0.0f), 
+    vec3(-1.0f, 0.0f, 0.0f), 
+    vec3(0.0f, 1.0f, 0.0f), 
+    vec3(0.0f, -1.0f, 0.0f),
+    vec3(0.0f, 0.0f, 1.0f), 
+    vec3(0.0f, 0.0f, -1.0f)
+};
 
 void main() {
     gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition.x, inPosition.y, inPosition.z, 1.0);

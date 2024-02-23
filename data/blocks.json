@@ -1,5 +1,5 @@
 {
-   "blockTypeCount" : 9,
+   "blockTypeCount" : 10,
    "blockTypes" : 
    [
       {
@@ -7,6 +7,7 @@
          "name" : "Air",
          "isFullOpaque" : false,
          "hideSameNeighbors" : true,
+         "isReplaceable" : true,
          "textureCoordinates" : 
          [
             {
@@ -40,6 +41,7 @@
          "name" : "Stone",
          "isFullOpaque" : true,
          "hideSameNeighbors" : true,
+         "isReplaceable" : false,
          "textureCoordinates" : 
          [
             {
@@ -73,6 +75,7 @@
          "name" : "Bedrock",
          "isFullOpaque" : true,
          "hideSameNeighbors" : true,
+         "isReplaceable" : false,
          "textureCoordinates" : 
          [
             {
@@ -106,6 +109,7 @@
          "name" : "Dirt",
          "isFullOpaque" : true,
          "hideSameNeighbors" : true,
+         "isReplaceable" : false,
          "textureCoordinates" : 
          [
             {
@@ -139,6 +143,7 @@
          "name" : "Grass",
          "isFullOpaque" : true,
          "hideSameNeighbors" : true,
+         "isReplaceable" : false,
          "textureCoordinates" : 
          [
             {
@@ -172,6 +177,7 @@
          "name" : "Sand",
          "isFullOpaque" : true,
          "hideSameNeighbors" : true,
+         "isReplaceable" : false,
          "textureCoordinates" : 
          [
             {
@@ -205,6 +211,7 @@
          "name" : "Water",
          "isFullOpaque" : false,
          "hideSameNeighbors" : true,
+         "isReplaceable" : true,
          "textureCoordinates" : 
          [
             {
@@ -238,6 +245,7 @@
          "name" : "Wood",
          "isFullOpaque" : true,
          "hideSameNeighbors" : true,
+         "isReplaceable" : false,
          "textureCoordinates" : 
          [
             {
@@ -271,6 +279,7 @@
          "name" : "Leaves",
          "isFullOpaque" : false,
          "hideSameNeighbors" : true,
+         "isReplaceable" : false,
          "textureCoordinates" : 
          [
             {
@@ -295,6 +304,40 @@
             },
             {
                "x" : 2.0,
+               "y" : 1.0
+            }
+         ]
+      },
+      {
+         "ID" : 9,
+         "name" : "Snow",
+         "isFullOpaque" : true,
+         "hideSameNeighbors" : true,
+         "isReplaceable" : false,
+         "textureCoordinates" : 
+         [
+            {
+               "x" : 3.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 3.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 3.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 3.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 3.0,
+               "y" : 1.0
+            },
+            {
+               "x" : 3.0,
                "y" : 1.0
             }
          ]

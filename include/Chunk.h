@@ -74,6 +74,7 @@ struct Chunk {
 
     Block& getBlock(int x, int y, int z);
     void setBlock(int x, int y, int z, Block &block); 
+    void setBlock(int x, int y, int z, int ID);
 
     float getNoiseValue(int x, int y, int z, WorldGenerationInfo &worldGenerationInfo, const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE, NoiseMethod method);
 

@@ -17,34 +17,41 @@ Block& Chunk::getBlock(int x, int y, int z) {
 }
 
 void Chunk::setBlock(int x, int y, int z, Block &block) {
+    blocksChanged = getBlock(x, y, z) != block ? true : blocksChanged;
     blockGrid[x*CHUNK_SIZE*CHUNK_SIZE+y*CHUNK_SIZE+z] = block;
-    blocksChanged = true;
+}
+
+void Chunk::setBlock(int x, int y, int z, int ID) {
+    Block block = Block(ID);
+    blocksChanged = getBlock(x, y, z) != block ? true : blocksChanged;
+    blockGrid[x*CHUNK_SIZE*CHUNK_SIZE+y*CHUNK_SIZE+z] = block;
 }
 
 float Chunk::getNoiseValue(int x, int y, int z, WorldGenerationInfo &worldGenerationInfo, const siv::PerlinNoise &terrainNoise, const int WORLD_Z_SIZE, NoiseMethod method) {
     float r = 0.0f;
     float level = worldGenerationInfo.seaLevel;
     float threshold = worldGenerationInfo.seaLevelThreshold;
-    float exponent = 1.5f;
+    float exponentBelow = 0.8f;
+    float exponentAbove = 1.5f;
     switch (method) {
     case TERRAIN_NOISE:
-        r = terrainNoise.noise2D_01(x/100.0f, y/100.0f);
+        r = terrainNoise.octave2D_01(x*worldGenerationInfo.terrainFrequency, y*worldGenerationInfo.terrainFrequency, 6);
+        r *= 0.9f;
+        r += terrainNoise.noise3D_01(x*worldGenerationInfo.terrainFrequency/50.0f, y*worldGenerationInfo.terrainFrequency/50.0f, z*worldGenerationInfo.terrainFrequency/20.0f)*0.1f;
+        
         if (r < threshold)
-            r = -pow(fabs(r-threshold)/threshold, exponent)*level+level;
+            r = -pow(fabs(r-threshold)/threshold, exponentBelow)*level+level;
         else
-            r = pow((r-threshold)/(1-threshold), exponent)*(1-level)+level;
-        //if (TEMP)
-        //    std::cout << " r: " << r << "   " << -pow(2, 1.5f) << std::endl;
-        // r *= 0.9f;
-        // r += terrainNoise.noise3D_01(x/16.0f, y/16.0f, z/16.0f)*0.1f;
-        // r *= 0.9f;
-        // r += terrainNoise.noise2D_01(x/10.0f+1, y/10.0f+1)*0.1f;
+            r = pow((r-threshold)/(1-threshold), exponentAbove)*(1-level)+level;
+
+        //r *= 0.95f;
+        //r += terrainNoise.noise3D_01(x*worldGenerationInfo.terrainFrequency/50.0f, y*worldGenerationInfo.terrainFrequency/50.0f, z*worldGenerationInfo.terrainFrequency/20.0f)*0.05f;
+        
+        
         r *= WORLD_Z_SIZE;
         break;
     case CAVE_NOISE:
-        r = terrainNoise.noise3D_01(x/20.0f, y/20.0f, z/20.0f)*0.5f
-        +terrainNoise.noise3D_01(x/40.0f, y/40.0f, z/40.0f)*0.3f;
-        +terrainNoise.noise3D_01(x/100.0f, y/100.0f, z/100.0f)*0.2f;
+        r = terrainNoise.noise3D_01(x/100.0f+terrainNoise.noise3D_01(z/10.0f-10, y/10.0f, x/10.0f)/5.0f, y/100.0f+terrainNoise.noise3D_01(x/10.0f-10, y/10.0f, z/10.0f)/5.0f, z/20.0f+terrainNoise.noise3D_01(y/10.0f-10, z/10.0f, x/10.0f)/2.0f);
         break;
     }
     return r;
@@ -55,15 +62,16 @@ void Chunk::generateBlocks(WorldGenerationInfo &worldGenerationInfo, const siv::
     int y = 0;
     int z = 0;
     float seaLevel = worldGenerationInfo.seaLevel*WORLD_Z_SIZE;
+    float snowLevel = worldGenerationInfo.snowHeight*WORLD_Z_SIZE;
 
     switch (method) {
     case NORMAL_GENERATION:
         //Basic filling in
         for (int i = 0; i < CHUNK_SIZE; i++) {
+            x = this->x + i;
             for (int j = 0; j < CHUNK_SIZE; j++) {
+                y = this->y + j;
                 for (int k = 0; k < CHUNK_SIZE; k++) {
-                    x = this->x + i;
-                    y = this->y + j;
                     z = this->z + k;
                     
                     int blockID = getNoiseValue(x, y, z, worldGenerationInfo, terrainNoise, WORLD_Z_SIZE, TERRAIN_NOISE) >= z ? 1 : 0;
@@ -73,23 +81,43 @@ void Chunk::generateBlocks(WorldGenerationInfo &worldGenerationInfo, const siv::
             }
         }
         
-        //Dirt and grass
+        //Dirt, grass, snow, and sand
         for (int i = 0; i < CHUNK_SIZE; i++) {
+            x = this->x + i;
             for (int j = 0; j < CHUNK_SIZE; j++) {
+                y = this->y + j;
                 for (int k = 0; k < CHUNK_SIZE; k++) {
-                    x = this->x + i;
-                    y = this->y + j;
                     z = this->z + k;
                     if (getBlock(i, j, k).ID == 1) {
                         if (getNoiseValue(x, y, z+1, worldGenerationInfo, terrainNoise, WORLD_Z_SIZE, TERRAIN_NOISE) < z+1) {
-                            Block block = Block(4);
-                            setBlock(i, j, k, block);
+                            if (z >= snowLevel+terrainNoise.noise2D_01(x, y)*10.0f) {
+                                Block block = Block(9);
+                                setBlock(i, j, k, block);
+                            }
+                            else if (z >= seaLevel+terrainNoise.noise2D_01(x, y)*5.0f-1) {
+                                Block block = Block(4);
+                                setBlock(i, j, k, block);
+                            }
+                            else {
+                                Block block = Block(5);
+                                setBlock(i, j, k, block);
+                            }
                         }
                         else {
-                            for (int I = 1; I <= (int) (terrainNoise.noise1D_01(x+y)*3.0f+1.0f); I++) {
+                            for (int I = 2; I <= (int) (terrainNoise.noise2D_01(y, x)*4.0f+1.0f); I++) {
                                 if (getNoiseValue(x, y, z+I, worldGenerationInfo, terrainNoise, WORLD_Z_SIZE, TERRAIN_NOISE) < z+I) {
-                                    Block block = Block(3);
-                                    setBlock(i, j, k, block);
+                                    if (z >= snowLevel) {
+                                        Block block = Block(9);
+                                        setBlock(i, j, k, block);
+                                    }
+                                    else if (z >= seaLevel+2) {
+                                        Block block = Block(3);
+                                        setBlock(i, j, k, block);
+                                    }
+                                    else {
+                                        Block block = Block(5);
+                                        setBlock(i, j, k, block);
+                                    }
                                     break;
                                 }
                             }
@@ -99,19 +127,34 @@ void Chunk::generateBlocks(WorldGenerationInfo &worldGenerationInfo, const siv::
             }
         }
 
+        //Caves
+        /*for (int i = 0; i < CHUNK_SIZE; i++) {
+            x = this->x + i;
+            for (int j = 0; j < CHUNK_SIZE; j++) {
+                y = this->y + j;
+                for (int k = 0; k < CHUNK_SIZE; k++) {
+                    if (getBlock(i, j, k).ID == 0 || getBlock(i, j, k).ID == 6)
+                        continue;
+                    z = this->z + k;
+                    
+                    if (getNoiseValue(x, y, z, worldGenerationInfo, terrainNoise, WORLD_Z_SIZE, CAVE_NOISE) < worldGenerationInfo.seaLevel*(1.0f-(float) z/WORLD_Z_SIZE)*0.8) {
+                        Block block = Block(0);
+                        setBlock(i, j, k, block);       
+                    }
+                }
+            }
+        }*/
+
         //Water
         if (this->z < seaLevel) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 x = this->x + i;
                 for (int j = 0; j < CHUNK_SIZE; j++) {
                     y = this->y + j;
-                    for (int k = 0; k < CHUNK_SIZE && this->z + k; k++) {
-                        z = this->z + k;
+                    for (int k = 0; k < CHUNK_SIZE && this->z + k < seaLevel; k++) {
                         if (getBlock(i, j, k).ID == 0) {
-                            //if (z < seaLevel) {
-                                Block block = Block(6);
-                                setBlock(i, j, k, block);
-                            //}
+                            Block block = Block(6);
+                            setBlock(i, j, k, block);
                         }
                     }
                 }
@@ -127,7 +170,17 @@ void Chunk::generateBlocks(WorldGenerationInfo &worldGenerationInfo, const siv::
                 }
             }
         }
+        //Top bedrock layer (goofy)
+        // if (this->z >= 448) {
+        //     for (int i = 0; i < CHUNK_SIZE; i++) {
+        //         for (int j = 0; j < CHUNK_SIZE; j++) {
+        //             Block block = Block(2);
+        //             setBlock(i, j, CHUNK_SIZE-1, block);
+        //         }
+        //     }
+        // }
         break;
+
     case BRAIN_GENERATION:
         for (int i = 0; i < CHUNK_SIZE; i++) {
             for (int j = 0; j < CHUNK_SIZE; j++) {
@@ -269,11 +322,11 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk, std::ma
                     if (getBlock(i, j, k).ID == 0)
                         continue;
                     if (i == 0 && !blockTypes[borderingChunk->getBlock(CHUNK_SIZE-1, j, k).ID].isFullOpaque 
-                        && !(getBlock(CHUNK_SIZE-1, j, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
+                        && !(borderingChunk->getBlock(CHUNK_SIZE-1, j, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
                         negativeXFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, getBlock(i, j, k).ID));
                     else if (i > 0 && !blockTypes[getBlock(i-1, j, k).ID].isFullOpaque 
-                        && !(getBlock(i-1, j, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
-                        negativeXFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, getBlock(i, j, k).ID));
+                       && !(getBlock(i-1, j, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
+                       negativeXFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, getBlock(i, j, k).ID));
                 }
             }
         }
@@ -349,7 +402,7 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk, std::ma
     }
     }
 
-    //std::cout << "Generated mesh for chunk " << x << " " << y << " " << z << " " << positiveXFaces.size() << std::endl;
+    std::cout << "Done generating mesh for chunk at " << x << " " << y << " " << z << " " << positiveXFaces.size() << std::endl;
 } 
 
 void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
@@ -390,7 +443,10 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+2);
                 return;
             case 6:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.0f, 1.0f);
+                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.2f, 0.6f);
+                break;
+            case 8:
+                normalAndColor = packNormalAndColor(face.orientation, 0.1f, 0.8f, 0.0f);
                 break;
             }
             vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
@@ -435,7 +491,10 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+0);
                 return;
             case 6:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.0f, 1.0f);
+                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.2f, 0.6f);
+                break;
+            case 8:
+                normalAndColor = packNormalAndColor(face.orientation, 0.1f, 0.8f, 0.0f);
                 break;
             }
             vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
@@ -480,7 +539,10 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+0);
                 return;
             case 6:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.0f, 1.0f);
+                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.2f, 0.6f);
+                break;
+            case 8:
+                normalAndColor = packNormalAndColor(face.orientation, 0.1f, 0.8f, 0.0f);
                 break;
             }
             vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
@@ -525,7 +587,10 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+2);
                 return;
             case 6:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.0f, 1.0f);
+                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.2f, 0.6f);
+                break;
+            case 8:
+                normalAndColor = packNormalAndColor(face.orientation, 0.1f, 0.8f, 0.0f);
                 break;
             }
             vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
@@ -555,7 +620,10 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+2);
                 return;
             case 6:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.0f, 1.0f);
+                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.2f, 0.6f);
+                break;
+            case 8:
+                normalAndColor = packNormalAndColor(face.orientation, 0.1f, 0.8f, 0.0f);
                 break;
             }
             vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normalAndColor});
@@ -586,7 +654,10 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+0);
                 return;
             case 6:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.0f, 1.0f);
+                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.2f, 0.6f);
+                break;
+            case 8:
+                normalAndColor = packNormalAndColor(face.orientation, 0.1f, 0.8f, 0.0f);
                 break;
             }
             vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normalAndColor});

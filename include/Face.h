@@ -16,6 +16,7 @@ struct BlockType {
     std::pair<float, float> textureCoordinates[NUMBER_OF_ORIENTATIONS];
     bool isFullOpaque = true;
     bool hideSameNeighbors = true;
+    bool isReplaceable = false;
 
     BlockType(int ID, std::string name, std::pair<float, float> *textureCoordinates);
     BlockType();

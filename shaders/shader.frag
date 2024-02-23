@@ -14,16 +14,16 @@ vec3 lightPosition = vec3(100000.0, 100000.0, 100000.0);
 vec3 lightColor = vec3(1.0, 1.0, 1.0);
 float ambient = 0.1f;
 
-float maxDistance = 5000.0;
-float minDistance = 500.0;
-float distanceFade() {
-    return clamp((distanceFromCamera - minDistance) / (maxDistance - minDistance), 0.0, 1.0);
+float maxDistanceAir = 2500.0;
+float minDistanceAir = 500.0;
+float distanceFadeAir() {
+    return clamp((distanceFromCamera - minDistanceAir) / (maxDistanceAir - minDistanceAir), 0.0, 1.0);
 }
 
 vec4 skyColor = vec4(0.3f, 0.3f, 0.6f, 1.0f);
 
 void main() {
-    if (distanceFromCamera > maxDistance) {
+    if (distanceFromCamera > maxDistanceAir) {
         outColor = skyColor;
         return;
     }
@@ -39,5 +39,5 @@ void main() {
 
     vec3 result = (ambient + diffuse) * sampledColor.rgb * fragColor;
     
-    outColor = vec4(result, sampledColor.a)+skyColor*distanceFade();
+    outColor = vec4(result, sampledColor.a)*(1.0f-distanceFadeAir())+skyColor*distanceFadeAir();
 }

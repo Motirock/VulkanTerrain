@@ -154,7 +154,7 @@ struct UniformBufferObject {
     alignas(16) glm::mat4 model;
     alignas(16) glm::mat4 view;
     alignas(16) glm::mat4 proj;
-    alignas(16) glm::vec3 cameraPosition;
+    alignas(16) glm::vec3 cameraPositionition;
 };
 
 class MCCloneApplication {
@@ -236,20 +236,20 @@ private:
     bool framebufferResized = false;
     uint32_t TPS = 60, ticks = 0;
 
-    //glm::vec3 cameraPos = glm::vec3(-40.0f, 256.0f, 575.0f);
-    glm::vec3 cameraPos = glm::vec3(0.0f, 128.0f, 200.0f);
+    // glm::vec3 cameraPosition = glm::vec3(-50.0f, 1024.0f+50.0f, 450.0f);
+    glm::vec3 cameraPosition = glm::vec3(0.0f, 128.0f, 200.0f);
     glm::vec3 viewDirection = glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f));
     //Degrees, xy plane, xz plane
-    glm::vec2 viewAngles = glm::vec2(0, 0);
-    float FOV = 70.0f;
+    glm::vec2 viewAngles = glm::vec2(45, -30);
+    float FOV = 60.0f;
 
     float speed = 50.0f;
     float turningSpeed = 2.0f;
 
     bool blocksChanged = true;
 
-    //const static int CHUNK_GRID_X_SIZE = 8, CHUNK_GRID_Y_SIZE = 8, CHUNK_GRID_Z_SIZE = 8;
-    const static int CHUNK_GRID_X_SIZE = 4, CHUNK_GRID_Y_SIZE = 4, CHUNK_GRID_Z_SIZE = 4;
+    // const static int CHUNK_GRID_X_SIZE = 16, CHUNK_GRID_Y_SIZE = 16, CHUNK_GRID_Z_SIZE = 8;
+    const static int CHUNK_GRID_X_SIZE = 12, CHUNK_GRID_Y_SIZE = 12, CHUNK_GRID_Z_SIZE = 8;
     const static int WORLD_X_SIZE = CHUNK_GRID_X_SIZE*CHUNK_SIZE, WORLD_Y_SIZE = CHUNK_GRID_Y_SIZE*CHUNK_SIZE, WORLD_Z_SIZE = CHUNK_GRID_Z_SIZE*CHUNK_SIZE;
     Chunk *chunkGrid[CHUNK_GRID_X_SIZE*CHUNK_GRID_Y_SIZE*CHUNK_GRID_Z_SIZE];
 
@@ -268,8 +268,37 @@ private:
     void setBlock(uint32_t x, uint32_t y, uint32_t z, Block &block) {
         getChunk(x/CHUNK_SIZE, y/CHUNK_SIZE, z/CHUNK_SIZE)->setBlock(x%CHUNK_SIZE, y%CHUNK_SIZE, z%CHUNK_SIZE, block);
     }
+    void setBlock(uint32_t x, uint32_t y, uint32_t z, int ID) {
+        getChunk(x/CHUNK_SIZE, y/CHUNK_SIZE, z/CHUNK_SIZE)->setBlock(x%CHUNK_SIZE, y%CHUNK_SIZE, z%CHUNK_SIZE, ID);
+    }
 
-    WorldGenerationInfo worldGenerationInfo = WorldGenerationInfo(123u, 0.01f, 0.6f, 1.0f, 0.7f, 0.5f, 0.5f);
+    Block nullBlock = Block(-1);
+    Block& getBlockWithChecks(uint32_t x, uint32_t y, uint32_t z) {
+        if (x < 0 || y < 0 || z < 0 || x >= WORLD_X_SIZE || y >= WORLD_Y_SIZE || z >= WORLD_Z_SIZE)
+            return nullBlock;
+        return getChunk(x/CHUNK_SIZE, y/CHUNK_SIZE, z/CHUNK_SIZE)->getBlock(x%CHUNK_SIZE, y%CHUNK_SIZE, z%CHUNK_SIZE);
+    }
+
+    void setBlockWithChecks(uint32_t x, uint32_t y, uint32_t z, Block &block) {
+        if (x < 0 || y < 0 || z < 0 || x >= WORLD_X_SIZE || y >= WORLD_Y_SIZE || z >= WORLD_Z_SIZE || !blockTypes[getBlock(x, y, z).ID].isReplaceable)
+            return;
+        getChunk(x/CHUNK_SIZE, y/CHUNK_SIZE, z/CHUNK_SIZE)->setBlock(x%CHUNK_SIZE, y%CHUNK_SIZE, z%CHUNK_SIZE, block);
+    }
+    void setBlockWithChecks(uint32_t x, uint32_t y, uint32_t z, int ID) {
+        if (x < 0 || y < 0 || z < 0 || x >= WORLD_X_SIZE || y >= WORLD_Y_SIZE || z >= WORLD_Z_SIZE || !blockTypes[getBlock(x, y, z).ID].isReplaceable)
+            return;
+        getChunk(x/CHUNK_SIZE, y/CHUNK_SIZE, z/CHUNK_SIZE)->setBlock(x%CHUNK_SIZE, y%CHUNK_SIZE, z%CHUNK_SIZE, ID);
+    }
+
+    WorldGenerationInfo worldGenerationInfo = WorldGenerationInfo(
+        123u,   //Seed
+        0.002f, //Terrain frequency
+        0.6f,   //Snow height
+        2.0f,   //Tree frequency
+        0.8f,   //Min tree noise value
+        0.2f,   //Sea level
+        0.45f   //Sea level threshold
+    );
 
     std::map<int, BlockType> blockTypes;
     void saveBlockTypes(std::string fileName) {
@@ -319,6 +348,7 @@ private:
             blockTypes[i].name = blocks["blockTypes"][i]["name"].asString();
             blockTypes[i].isFullOpaque = blocks["blockTypes"][i]["isFullOpaque"].asBool();
             blockTypes[i].hideSameNeighbors = blocks["blockTypes"][i]["hideSameNeighbors"].asBool();
+            blockTypes[i].isReplaceable = blocks["blockTypes"][i]["isReplaceable"].asBool();
             for (int j = 0; j < NUMBER_OF_ORIENTATIONS; j++) {
                 blockTypes[i].textureCoordinates[j].first = blocks["blockTypes"][i]["textureCoordinates"][j]["x"].asFloat();
                 blockTypes[i].textureCoordinates[j].second = blocks["blockTypes"][i]["textureCoordinates"][j]["y"].asFloat();
@@ -333,6 +363,50 @@ private:
                 throw std::runtime_error("Block ID "+std::to_string(i)+" does not exist");
         }
     }*/
+
+    void createTree(int x, int y, int z) {
+        setBlockWithChecks(x-1, y-1, z+4, 8);
+        setBlockWithChecks(x, y-1, z+4, 8);
+        setBlockWithChecks(x+1, y-1, z+4, 8);
+        setBlockWithChecks(x-1, y, z+4, 8);
+        setBlockWithChecks(x+1, y, z+4, 8);
+        setBlockWithChecks(x-1, y+1, z+4, 8);
+        setBlockWithChecks(x, y+1, z+4, 8);
+        setBlockWithChecks(x+1, y+1, z+4, 8);
+        setBlockWithChecks(x, y-1, z+5, 8);
+        setBlockWithChecks(x-1, y, z+5, 8);
+        setBlockWithChecks(x, y, z+5, 8);
+        setBlockWithChecks(x+1, y, z+5, 8);
+        setBlockWithChecks(x, y+1, z+5, 8);
+        for (int i = 0; i < 5; i++) {
+            setBlockWithChecks(x, y, z+i, 7);
+        }
+        for (int i = -2; i <= 2; i++) {
+            for (int j = -2; j <= 2; j++) {
+                for (int k = 2; k <= 3; k++) {
+                    setBlockWithChecks(x+j, y+i, z+k, 8);
+                }
+            }
+        }
+    }
+
+    void generateTrees() {
+        const siv::PerlinNoise::seed_type treeNoiseSeed = worldGenerationInfo.seed+1;
+	    const siv::PerlinNoise treeNoise { treeNoiseSeed };
+
+        for (int i = 0; i < WORLD_X_SIZE; i++) {
+            for (int j = 0; j < WORLD_Y_SIZE; j++) {
+                if (treeNoise.octave2D_01(i*worldGenerationInfo.treeFrequency, j*worldGenerationInfo.treeFrequency, 2, 0.5) > worldGenerationInfo.minTreeNoiseValue) {
+                    for (int k = WORLD_Z_SIZE-1; k >= 0; k--) {
+                        if (getBlock(i, j, k).ID == 4) {
+                            createTree(i, j, k);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     void generateWorld() {
         const siv::PerlinNoise::seed_type terrainNoiseSeed = worldGenerationInfo.seed;
@@ -355,6 +429,8 @@ private:
                 }
             }
         }
+
+        generateTrees();
     }
 
     void initWindow() {
@@ -404,20 +480,20 @@ private:
 
     void input() {
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-            cameraPos += viewDirection*speed*(1.0f/TPS);
+            cameraPosition += viewDirection*speed*(1.0f/TPS);
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-            cameraPos -= viewDirection*speed*(1.0f/TPS);
+            cameraPosition -= viewDirection*speed*(1.0f/TPS);
         if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-            cameraPos.z += speed*(1.0f/TPS);
+            cameraPosition.z += speed*(1.0f/TPS);
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-            cameraPos.z -= speed*(1.0f/TPS);
+            cameraPosition.z -= speed*(1.0f/TPS);
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-            cameraPos += glm::normalize(glm::vec3(
+            cameraPosition += glm::normalize(glm::vec3(
                 std::cos(glm::radians(-viewAngles.x+90))*std::cos(glm::radians(viewAngles.y)), 
                 std::sin(glm::radians(-viewAngles.x+90))*std::cos(glm::radians(viewAngles.y)), 
                 0))*speed*(1.0f/TPS);
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-            cameraPos += glm::normalize(glm::vec3(
+            cameraPosition += glm::normalize(glm::vec3(
                 std::cos(glm::radians(-viewAngles.x-90))*std::cos(glm::radians(viewAngles.y)), 
                 std::sin(glm::radians(-viewAngles.x-90))*std::cos(glm::radians(viewAngles.y)), 
                 0))*speed*(1.0f/TPS);
@@ -443,7 +519,7 @@ private:
                     update();
                 drawFrame();
                 #ifdef SHOW_POSITION
-                std::cout << "X Y Z: " << cameraPos.x << " " << cameraPos.y << " " << cameraPos.z << "\n";
+                std::cout << "X Y Z: " << cameraPosition.x << " " << cameraPosition.y << " " << cameraPosition.z << "\n";
                 #endif
                 #ifndef HIDE_DIAGNOSTICS
                 if (ticks % TPS == 0) {
@@ -464,7 +540,6 @@ private:
                     << "Polygons rendered: " << indexCount/3 << "\n"
                     << "Vertex count: " << vertexCount << " Vertex memory size: " << vertexCount*sizeof(Vertex) << "\n"
                     << "Index count: " << indexCount << " Index memory size: " << indexCount*sizeof(uint32_t) << "\n"
-                    << "Vertex size: " << sizeof(glm::vec3) << " + " << sizeof(glm::vec2) << " + " << sizeof(uint8_t) << " = " << sizeof(Vertex)
                     << "\n";
                 }
                 #endif
@@ -1605,19 +1680,32 @@ private:
             vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
             vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
-            for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
-                for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
-                    for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
-                        if (getChunk(i, j, k)->vertexCount == 0)
-                            continue;
-                        VkBuffer vertexBuffers[] = {getChunk(i, j, k)->vertexBuffer};
-                        VkDeviceSize offsets[] = {0};
-
-                        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-                        vkCmdBindIndexBuffer(commandBuffer, getChunk(i, j, k)->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-                        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(getChunk(i, j, k)->indexCount), 1, 0, 0, 0);
+            int chunkCount = CHUNK_GRID_X_SIZE*CHUNK_GRID_Y_SIZE*CHUNK_GRID_Z_SIZE;
+            std::vector<Chunk *> chunksSorted = std::vector<Chunk *>();
+            for (int i = 0; i < chunkCount; i++) {
+                Chunk *chunk = chunkGrid[i];
+                if (chunk->vertexCount == 0)
+                    continue;
+                bool isShortestDistance = true;
+                for (int j = 0; j < chunksSorted.size(); j++) {
+                    Chunk *other = chunksSorted[j];
+                    if (glm::distance(cameraPosition, glm::vec3(chunk->x+CHUNK_SIZE/2.0f, chunk->y+CHUNK_SIZE/2.0f, chunk->z+CHUNK_SIZE/2.0f)) > glm::distance(cameraPosition, glm::vec3(other->x+CHUNK_SIZE/2.0f, other->y+CHUNK_SIZE/2.0f, other->z+CHUNK_SIZE/2.0f))) {
+                        chunksSorted.insert(chunksSorted.begin()+j, chunk);
+                        isShortestDistance = false;
+                        break;
                     }
                 }
+                if (isShortestDistance)
+                    chunksSorted.push_back(chunk);
+            }
+
+            for (Chunk *chunk : chunksSorted) {
+                VkBuffer vertexBuffers[] = {chunk->vertexBuffer};
+                VkDeviceSize offsets[] = {0};
+
+                vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+                vkCmdBindIndexBuffer(commandBuffer, chunk->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+                vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(chunk->indexCount), 1, 0, 0, 0);
             }
 
         vkCmdEndRenderPass(commandBuffer);
@@ -1673,15 +1761,15 @@ private:
         //std::cout << "View direction:\n";
         //std::cout << 
         //std::cout << viewDirection.x << " " << viewDirection.y << " " << viewDirection.z << "\n\n";
-        //cameraPos.x = time/10.0f;
+        //cameraPosition.x = time/10.0f;
 
         UniformBufferObject ubo{};
         ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.view = glm::lookAt(cameraPos, cameraPos+viewDirection, glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.view = glm::lookAt(cameraPosition, cameraPosition+viewDirection, glm::vec3(0.0f, 0.0f, 1.0f));
         ubo.proj = glm::perspective(glm::radians(FOV), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10000.0f);
         ubo.proj[1][1] *= -1;
 
-        ubo.cameraPosition = cameraPos;
+        ubo.cameraPositionition = cameraPosition;
 
         memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
@@ -1785,10 +1873,21 @@ private:
     }
 
     void update() {
-        if (cameraPos.x >= 0 && cameraPos.x < CHUNK_GRID_X_SIZE*CHUNK_SIZE && cameraPos.y >= 0 && cameraPos.y < CHUNK_GRID_Y_SIZE*CHUNK_SIZE && cameraPos.z-5 >= 0 && cameraPos.z-5 < CHUNK_GRID_Z_SIZE*CHUNK_SIZE) {
-            Block block = Block(5);
-            //setBlock((int) cameraPos.x, (int) cameraPos.y, (int) cameraPos.z-5, block);
-            //std::cout << getBlock((int) cameraPos.x, (int) cameraPos.y, (int) cameraPos.z-5).ID << "\n";
+        if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) {
+            Block block = Block(0);
+            for (int i = cameraPosition.x-5; i <= cameraPosition.x+5; i++)
+                for (int j = cameraPosition.y-5; j <= cameraPosition.y+5; j++)
+                    for (int k = cameraPosition.z-5; k <= cameraPosition.z+5; k++)
+                        if (i >= 0 && i < CHUNK_GRID_X_SIZE*CHUNK_SIZE && j >= 0 && j < CHUNK_GRID_Y_SIZE*CHUNK_SIZE && k >= 0 && k < CHUNK_GRID_Z_SIZE*CHUNK_SIZE)
+                            setBlock(i, j, k, block);
+            //std::cout << getBlock((int) cameraPosition.x, (int) cameraPosition.y, (int) cameraPosition.z-5).ID << "\n";
+        }
+        
+        if (rand() % 10 == 0 && false) {
+            std::cout << "\nCamera position:\n";
+            std::cout << cameraPosition.x << " " << cameraPosition.y << " " << cameraPosition.z << '\n';
+            std::cout << viewAngles.x << " " << viewAngles.y << '\n';
+            std::cout << "\n";
         }
 
         blocksChanged = false;
@@ -1806,105 +1905,78 @@ private:
             for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
                 for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
                     for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
-                        if (i < CHUNK_GRID_X_SIZE-1) {
-                            borderingChunk = getChunk(i+1, j, k);
-                            getChunk(i, j, k)->generateMesh(POSITIVE_X, borderingChunk, blockTypes);
-                            for (Face face : getChunk(i, j, k)->positiveXFaces)
+                        if (getChunk(i, j, k)->blocksChanged) {
+                            if (i < CHUNK_GRID_X_SIZE-1) {
+                                borderingChunk = getChunk(i+1, j, k);
+                                getChunk(i, j, k)->generateMesh(POSITIVE_X, borderingChunk, blockTypes);
+                                for (Face face : getChunk(i, j, k)->positiveXFaces)
+                                    uploadFace(face);
+                            }
+                            else {
+                                getChunk(i, j, k)->generateMesh(POSITIVE_X, NULL, blockTypes);
+                                for (Face face : getChunk(i, j, k)->positiveXFaces)
+                                    uploadFace(face);
+                            }
+                            if (i > 0) {
+                                borderingChunk = getChunk(i-1, j, k);
+                                getChunk(i, j, k)->generateMesh(NEGATIVE_X, borderingChunk, blockTypes);
+                                for (Face face : getChunk(i, j, k)->negativeXFaces)
+                                    uploadFace(face);
+                            }
+                            else {
+                                getChunk(i, j, k)->generateMesh(NEGATIVE_X, NULL, blockTypes);
+                                for (Face face : getChunk(i, j, k)->negativeXFaces)
+                                    uploadFace(face);
+                            }
+                            if (j < CHUNK_GRID_Y_SIZE-1) {
+                                borderingChunk = getChunk(i, j+1, k);
+                                getChunk(i, j, k)->generateMesh(POSITIVE_Y, borderingChunk, blockTypes);
+                                for (Face face : getChunk(i, j, k)->positiveYFaces)
+                                    uploadFace(face);
+                            }
+                            else {
+                                getChunk(i, j, k)->generateMesh(POSITIVE_Y, NULL, blockTypes);
+                                for (Face face : getChunk(i, j, k)->positiveYFaces)
+                                    uploadFace(face);
+                            }
+                            if (j > 0) {
+                                borderingChunk = getChunk(i, j-1, k);
+                                getChunk(i, j, k)->generateMesh(NEGATIVE_Y, borderingChunk, blockTypes);
+                                for (Face face : getChunk(i, j, k)->negativeYFaces)
+                                    uploadFace(face);
+                            }
+                            else {
+                                getChunk(i, j, k)->generateMesh(NEGATIVE_Y, NULL, blockTypes);
+                                for (Face face : getChunk(i, j, k)->negativeYFaces)
+                                    uploadFace(face);
+                            }
+                            if (k < CHUNK_GRID_Z_SIZE-1) {
+                                borderingChunk = getChunk(i, j, k+1);
+                                getChunk(i, j, k)->generateMesh(POSITIVE_Z, borderingChunk, blockTypes);
+                                for (Face face : getChunk(i, j, k)->positiveZFaces)
+                                    uploadFace(face);
+                            }
+                            else {
+                                getChunk(i, j, k)->generateMesh(POSITIVE_Z, NULL, blockTypes);
+                                for (Face face : getChunk(i, j, k)->positiveZFaces)
+                                    uploadFace(face);
+                            }
+                            if (k > 0) {
+                                borderingChunk = getChunk(i, j, k-1);
+                                getChunk(i, j, k)->generateMesh(NEGATIVE_Z, borderingChunk, blockTypes);
+                                for (Face face : getChunk(i, j, k)->negativeZFaces)
+                                    uploadFace(face);
+                            }
+                            else {
+                                getChunk(i, j, k)->generateMesh(NEGATIVE_Z, NULL, blockTypes);
+                                for (Face face : getChunk(i, j, k)->negativeZFaces)
                                 uploadFace(face);
-                        }
-                        else {
-                            getChunk(i, j, k)->generateMesh(POSITIVE_X, NULL, blockTypes);
-                            for (Face face : getChunk(i, j, k)->positiveXFaces)
-                                uploadFace(face);
+                            }
                         }
                     }
                 }
             }
-            for (int i = CHUNK_GRID_X_SIZE-1; i >= 0; i--) {
-                for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
-                    for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
-                        if (i > 0) {
-                            borderingChunk = getChunk(i-1, j, k);
-                            getChunk(i, j, k)->generateMesh(NEGATIVE_X, borderingChunk, blockTypes);
-                            for (Face face : getChunk(i, j, k)->negativeXFaces)
-                                uploadFace(face);
-                        }
-                        else {
-                            getChunk(i, j, k)->generateMesh(NEGATIVE_X, NULL, blockTypes);
-                            for (Face face : getChunk(i, j, k)->negativeXFaces)
-                                uploadFace(face);
-                        }
-                    }
-                }
-            }
-            for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
-                for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
-                    for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
-                        if (j < CHUNK_GRID_Y_SIZE-1) {
-                            borderingChunk = getChunk(i, j+1, k);
-                            getChunk(i, j, k)->generateMesh(POSITIVE_Y, borderingChunk, blockTypes);
-                            for (Face face : getChunk(i, j, k)->positiveYFaces)
-                                uploadFace(face);
-                        }
-                        else {
-                            getChunk(i, j, k)->generateMesh(POSITIVE_Y, NULL, blockTypes);
-                            for (Face face : getChunk(i, j, k)->positiveYFaces)
-                                uploadFace(face);
-                        }
-                    }
-                }
-            }
-            for (int j = CHUNK_GRID_Y_SIZE-1; j >= 0; j--) {
-                for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
-                    for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
-                        if (j > 0) {
-                            borderingChunk = getChunk(i, j-1, k);
-                            getChunk(i, j, k)->generateMesh(NEGATIVE_Y, borderingChunk, blockTypes);
-                            for (Face face : getChunk(i, j, k)->negativeYFaces)
-                                uploadFace(face);
-                        }
-                        else {
-                            getChunk(i, j, k)->generateMesh(NEGATIVE_Y, NULL, blockTypes);
-                            for (Face face : getChunk(i, j, k)->negativeYFaces)
-                                uploadFace(face);
-                        }
-                    }
-                }
-            }
-            for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
-                for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
-                    for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
-                        if (k < CHUNK_GRID_Z_SIZE-1) {
-                            borderingChunk = getChunk(i, j, k+1);
-                            getChunk(i, j, k)->generateMesh(POSITIVE_Z, borderingChunk, blockTypes);
-                            for (Face face : getChunk(i, j, k)->positiveZFaces)
-                                uploadFace(face);
-                        }
-                        else {
-                            getChunk(i, j, k)->generateMesh(POSITIVE_Z, NULL, blockTypes);
-                            for (Face face : getChunk(i, j, k)->positiveZFaces)
-                                uploadFace(face);
-                        }
-                    }
-                }
-            }
-            for (int k = CHUNK_GRID_Z_SIZE-1; k >= 0; k--) {
-                for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
-                    for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
-                        if (k > 0) {
-                            borderingChunk = getChunk(i, j, k-1);
-                            getChunk(i, j, k)->generateMesh(NEGATIVE_Z, borderingChunk, blockTypes);
-                            for (Face face : getChunk(i, j, k)->negativeZFaces)
-                                uploadFace(face);
-                        }
-                        else {
-                            getChunk(i, j, k)->generateMesh(NEGATIVE_Z, NULL, blockTypes);
-                            for (Face face : getChunk(i, j, k)->negativeZFaces)
-                               uploadFace(face);
-                        }
-                    }
-                }
-            }
+
             for (int i = 0; i < CHUNK_GRID_X_SIZE; i++)
                 for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++)
                     for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++)
@@ -1944,11 +2016,11 @@ private:
                 }
             }
             // uint32_t vertexCount = vertices.size();
-            // uint32_t normalAndColor = packNormalAndColor(POSITIVE_Z, 0, 50, 150);
-            // vertices.push_back(Vertex{glm::vec3(0.0f, 0.0f, ceil(WORLD_Z_SIZE/2.0f)-0.5f), glm::vec2(0.5f, 0.6f), normalAndColor});
-            // vertices.push_back(Vertex{glm::vec3(WORLD_X_SIZE, 0.0f, ceil(WORLD_Z_SIZE/2.0f)-0.5f), glm::vec2(0.6f, 0.6f), normalAndColor});
-            // vertices.push_back(Vertex{glm::vec3(0.0f, WORLD_Y_SIZE, ceil(WORLD_Z_SIZE/2.0f)-0.5f), glm::vec2(0.5f, 0.5f), normalAndColor});
-            // vertices.push_back(Vertex{glm::vec3(WORLD_X_SIZE, WORLD_Y_SIZE, ceil(WORLD_Z_SIZE/2.0f)-0.5f), glm::vec2(0.6f, 0.5f), normalAndColor});
+            // uint32_t normalAndColor = packNormalAndColor(POSITIVE_Z, 1.0f, 1.0f, 1.0f);
+            // vertices.push_back(Vertex{glm::vec3(-10000.0f, -10000.0f, -10000.0f), glm::vec2(0.5f, 0.6f), normalAndColor});
+            // vertices.push_back(Vertex{glm::vec3(WORLD_X_SIZE+10000.0f, -10000.0f, -10000.0f), glm::vec2(0.6f, 0.6f), normalAndColor});
+            // vertices.push_back(Vertex{glm::vec3(-10000.0f, WORLD_Y_SIZE+10000.0f, -10000.0f), glm::vec2(0.5f, 0.5f), normalAndColor});
+            // vertices.push_back(Vertex{glm::vec3(WORLD_X_SIZE+10000.0f, WORLD_Y_SIZE+10000.0f, -10000.0f), glm::vec2(0.6f, 0.5f), normalAndColor});
 
             // indices.push_back(vertexCount+0);
             // indices.push_back(vertexCount+1);

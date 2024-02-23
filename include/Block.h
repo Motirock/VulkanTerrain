@@ -8,6 +8,9 @@ struct Block {
 
     Block(int blockID);
     Block();
+
+    bool operator == (const Block &other);
+    bool operator != (const Block &other); 
 };
 
 #endif
