@@ -43,10 +43,6 @@ float Chunk::getNoiseValue(int x, int y, int z, WorldGenerationInfo &worldGenera
             r = -pow(fabs(r-threshold)/threshold, exponentBelow)*level+level;
         else
             r = pow((r-threshold)/(1-threshold), exponentAbove)*(1-level)+level;
-
-        //r *= 0.95f;
-        //r += terrainNoise.noise3D_01(x*worldGenerationInfo.terrainFrequency/50.0f, y*worldGenerationInfo.terrainFrequency/50.0f, z*worldGenerationInfo.terrainFrequency/20.0f)*0.05f;
-        
         
         r *= WORLD_Z_SIZE;
         break;
@@ -62,7 +58,7 @@ void Chunk::generateBlocks(WorldGenerationInfo &worldGenerationInfo, const siv::
     int y = 0;
     int z = 0;
     float seaLevel = worldGenerationInfo.seaLevel*WORLD_Z_SIZE;
-    float snowLevel = worldGenerationInfo.snowHeight*WORLD_Z_SIZE;
+    float snowLevel = worldGenerationInfo.snowLevel*WORLD_Z_SIZE;
 
     switch (method) {
     case NORMAL_GENERATION:
@@ -90,11 +86,11 @@ void Chunk::generateBlocks(WorldGenerationInfo &worldGenerationInfo, const siv::
                     z = this->z + k;
                     if (getBlock(i, j, k).ID == 1) {
                         if (getNoiseValue(x, y, z+1, worldGenerationInfo, terrainNoise, WORLD_Z_SIZE, TERRAIN_NOISE) < z+1) {
-                            if (z >= snowLevel+terrainNoise.noise2D_01(x, y)*10.0f) {
+                            if (z >= snowLevel+terrainNoise.noise2D_01(x*worldGenerationInfo.terrainFrequency*100.0f, y*worldGenerationInfo.terrainFrequency*100.0f)*WORLD_Z_SIZE*0.05) {
                                 Block block = Block(9);
                                 setBlock(i, j, k, block);
                             }
-                            else if (z >= seaLevel+terrainNoise.noise2D_01(x, y)*5.0f-1) {
+                            else if (z >= seaLevel+terrainNoise.noise2D_01(x*worldGenerationInfo.terrainFrequency*100.0f, y*worldGenerationInfo.terrainFrequency*100.0f)*WORLD_Z_SIZE*0.02-1) {
                                 Block block = Block(4);
                                 setBlock(i, j, k, block);
                             }
@@ -106,11 +102,11 @@ void Chunk::generateBlocks(WorldGenerationInfo &worldGenerationInfo, const siv::
                         else {
                             for (int I = 2; I <= (int) (terrainNoise.noise2D_01(y, x)*4.0f+1.0f); I++) {
                                 if (getNoiseValue(x, y, z+I, worldGenerationInfo, terrainNoise, WORLD_Z_SIZE, TERRAIN_NOISE) < z+I) {
-                                    if (z >= snowLevel) {
+                                    if (z >= snowLevel+terrainNoise.noise2D_01(x*worldGenerationInfo.terrainFrequency*100.0f, y*worldGenerationInfo.terrainFrequency*100.0f)*WORLD_Z_SIZE*0.05) {
                                         Block block = Block(9);
                                         setBlock(i, j, k, block);
                                     }
-                                    else if (z >= seaLevel+2) {
+                                    else if (z >= seaLevel+terrainNoise.noise2D_01(x*worldGenerationInfo.terrainFrequency*100.0f, y*worldGenerationInfo.terrainFrequency*100.0f)*WORLD_Z_SIZE*0.02-1) {
                                         Block block = Block(3);
                                         setBlock(i, j, k, block);
                                     }

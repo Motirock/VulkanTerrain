@@ -1,11 +1,8 @@
-//TODO createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; not allowing for transpartent alpha
-//TODO pixelated by changing mag filter from VK_FILTER_LINEAR and disabling anisotropy
-//TODO remove annoying abreviation (pos, proj, etc.)
-//TODO * or & AFTER space
-//TODO use single number for 3d coords
-//TODO chunk deconstructor
-//TODO block position refers to its corner, not its center
-//TODO double for time instead of float (shits itself after time is too long)
+/*
+3-D Voxel-Based Terrain Generator
+By Victor Monnier
+2024
+*/
 
 /* Quick Use
 glslc shaders/shader.vert -o shaders/vert.spv && glslc shaders/shader.frag -o shaders/frag.spv && g++ -c -std=c++17 -O3 src/*.cxx -Iinclude && g++ *.o -o bin/main -Llib -lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi && ./bin/main
@@ -27,23 +24,6 @@ g++ -c -std=c++17 -O3 src/*.cxx -Iinclude && g++ *.o -o bin/main -Llib -lglfw -l
 glslc shaders/shader.vert -o shaders/vert.spv
 glslc shaders/shader.frag -o shaders/frag.spv
 */
-
-/*
-static auto startTime = std::chrono::high_resolution_clock::now();
-auto currentTime = std::chrono::high_resolution_clock::now();
-time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-if (time*TPS >= ticks) {
-    glfwPollEvents();
-    drawFrame();
-    if (ticks++ % TPS == 0) {
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float frameTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count()-time;
-    std::cout << "Frame time: " << frameTime <<
-        " Theoretical maximum FPS: " << (int) (1.0f/frameTime) << "\n";
-    }
-}
-*/
-
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -80,7 +60,6 @@ if (time*TPS >= ticks) {
 
 using namespace VkUtils;
 
-//TODO temp
 using namespace std::this_thread; //Sleep_for, sleep_until
 using namespace std::chrono; //Nanoseconds, system_clock, seconds
 
@@ -89,8 +68,6 @@ const uint32_t HEIGHT = 600;
 
 const uint32_t MAX_VERTEX_MEMORY = 1'000*sizeof(Vertex);
 const uint32_t MAX_INDEX_MEMORY = 1'000*sizeof(uint32_t);
-//const uint32_t CHUNK_MAX_VERTEX_MEMORY = 2'00'000*sizeof(Vertex);
-//const uint32_t CHUNK_MAX_INDEX_MEMORY = 2'50'000*sizeof(uint32_t);
 
 const std::string MODEL_PATH = "models/viking_room.obj";
 const std::string TEXTURE_PATH = "textures/atlas.png";
@@ -236,7 +213,6 @@ private:
     bool framebufferResized = false;
     uint32_t TPS = 60, ticks = 0;
 
-    // glm::vec3 cameraPosition = glm::vec3(-50.0f, 1024.0f+50.0f, 450.0f);
     glm::vec3 cameraPosition = glm::vec3(0.0f, 128.0f, 200.0f);
     glm::vec3 viewDirection = glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f));
     //Degrees, xy plane, xz plane
@@ -248,7 +224,6 @@ private:
 
     bool blocksChanged = true;
 
-    // const static int CHUNK_GRID_X_SIZE = 16, CHUNK_GRID_Y_SIZE = 16, CHUNK_GRID_Z_SIZE = 8;
     const static int CHUNK_GRID_X_SIZE = 12, CHUNK_GRID_Y_SIZE = 12, CHUNK_GRID_Z_SIZE = 8;
     const static int WORLD_X_SIZE = CHUNK_GRID_X_SIZE*CHUNK_SIZE, WORLD_Y_SIZE = CHUNK_GRID_Y_SIZE*CHUNK_SIZE, WORLD_Z_SIZE = CHUNK_GRID_Z_SIZE*CHUNK_SIZE;
     Chunk *chunkGrid[CHUNK_GRID_X_SIZE*CHUNK_GRID_Y_SIZE*CHUNK_GRID_Z_SIZE];
@@ -291,9 +266,9 @@ private:
     }
 
     WorldGenerationInfo worldGenerationInfo = WorldGenerationInfo(
-        123u,   //Seed
+        1u,     //Seed
         0.002f, //Terrain frequency
-        0.6f,   //Snow height
+        0.6f,   //Snow level
         2.0f,   //Tree frequency
         0.8f,   //Min tree noise value
         0.2f,   //Sea level
@@ -355,14 +330,6 @@ private:
             }
         }
     }
-
-    /*void checkBlockTypes() {
-        for (int i = 0; i < NUMBER_OF_BLOCK_IDS-1; i++) {
-            std::cout << "Block ID: " << blockTypes[i].ID << " Name: " << blockTypes[i].name << '\n';
-            if (blockTypes.count((BlockID) i) == 0)
-                throw std::runtime_error("Block ID "+std::to_string(i)+" does not exist");
-        }
-    }*/
 
     void createTree(int x, int y, int z) {
         setBlockWithChecks(x-1, y-1, z+4, 8);
@@ -1297,7 +1264,7 @@ private:
         samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
         samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         samplerInfo.minLod = 0.0f; //Optional
-        samplerInfo.maxLod = 0.0f;static_cast<float>(mipLevels);
+        samplerInfo.maxLod = 0.0f; //static_cast<float>(mipLevels);
         samplerInfo.mipLodBias = 0.0f; //Optional
 
         if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
@@ -1742,26 +1709,18 @@ private:
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-        //Rotates automatically
-        //viewAngles.x = std::fmod(time*180.0f, 360.0f);
-
         if (viewAngles.y >= 180)
             viewAngles.y = 180-viewAngles.y;
         if (viewAngles.y >= 90)
             viewAngles.y = 89.999f;
         else if (viewAngles.y <= -90)
             viewAngles.y = -89.999f;
-        //std::cout << "View angles:\n";
-        //std::cout << viewAngles.x << " " << viewAngles.y << "\n";
+        
         viewDirection = glm::normalize(glm::vec3(
             std::cos(glm::radians(-viewAngles.x))*std::cos(glm::radians(viewAngles.y)), 
             std::sin(glm::radians(-viewAngles.x))*std::cos(glm::radians(viewAngles.y)), 
             std::sin(glm::radians(viewAngles.y))
         ));
-        //std::cout << "View direction:\n";
-        //std::cout << 
-        //std::cout << viewDirection.x << " " << viewDirection.y << " " << viewDirection.z << "\n\n";
-        //cameraPosition.x = time/10.0f;
 
         UniformBufferObject ubo{};
         ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -1772,94 +1731,6 @@ private:
         ubo.cameraPositionition = cameraPosition;
 
         memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
-    }
-
-    void uploadFace(Face &face) {
-        return;
-        /*uint32_t vertexCount = vertices.size();
-        float textureX = blockTypes[face.blockID].textureCoordinates[face.orientation].first/8.0f, textureY = blockTypes[face.blockID].textureCoordinates[face.orientation].second/8.0f;
-        glm::vec3 normal;
-
-        switch (face.orientation) {
-            case POSITIVE_X:
-                normal = glm::vec3(1.0f, 0.0f, 0.0f);
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/8.0f, textureY), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
-                indices.push_back(vertexCount+0);
-                indices.push_back(vertexCount+1);
-                indices.push_back(vertexCount+3);
-                indices.push_back(vertexCount+0);
-                indices.push_back(vertexCount+3);
-                indices.push_back(vertexCount+2);
-                break;
-            case NEGATIVE_X:
-                normal = glm::vec3(-1.0f, 0.0f, 0.0f);
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/8.0f, textureY), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
-                indices.push_back(vertexCount+3);
-                indices.push_back(vertexCount+1);
-                indices.push_back(vertexCount+0);
-                indices.push_back(vertexCount+2);
-                indices.push_back(vertexCount+3);
-                indices.push_back(vertexCount+0);
-                break;
-            case POSITIVE_Y:
-                normal = glm::vec3(0.0f, 1.0f, 0.0f);
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/8.0f, textureY), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
-                indices.push_back(vertexCount+3);
-                indices.push_back(vertexCount+1);
-                indices.push_back(vertexCount+0);
-                indices.push_back(vertexCount+2);
-                indices.push_back(vertexCount+3);
-                indices.push_back(vertexCount+0);
-                break;
-            case NEGATIVE_Y:
-                normal = glm::vec3(0.0f, -1.0f, 0.0f);
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/8.0f, textureY), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
-                indices.push_back(vertexCount+0);
-                indices.push_back(vertexCount+1);
-                indices.push_back(vertexCount+3);
-                indices.push_back(vertexCount+0);
-                indices.push_back(vertexCount+3);
-                indices.push_back(vertexCount+2);
-                break;
-            case POSITIVE_Z:
-                normal = glm::vec3(0.0f, 0.0f, 1.0f);
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/8.0f, textureY), normal});
-                indices.push_back(vertexCount+0);
-                indices.push_back(vertexCount+1);
-                indices.push_back(vertexCount+3);
-                indices.push_back(vertexCount+0);
-                indices.push_back(vertexCount+3);
-                indices.push_back(vertexCount+2);
-                break;
-            case NEGATIVE_Z:
-                normal = glm::vec3(0.0f, 0.0f, -1.0f);
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX, textureY), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normal});
-                vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec2(textureX+1.0f/8.0f, textureY), normal}); 
-                indices.push_back(vertexCount+3);
-                indices.push_back(vertexCount+1);
-                indices.push_back(vertexCount+0);
-                indices.push_back(vertexCount+2);
-                indices.push_back(vertexCount+3);
-                indices.push_back(vertexCount+0);
-                break;
-        }*/
     }
 
     void uploadVertices() {
@@ -1880,15 +1751,16 @@ private:
                     for (int k = cameraPosition.z-5; k <= cameraPosition.z+5; k++)
                         if (i >= 0 && i < CHUNK_GRID_X_SIZE*CHUNK_SIZE && j >= 0 && j < CHUNK_GRID_Y_SIZE*CHUNK_SIZE && k >= 0 && k < CHUNK_GRID_Z_SIZE*CHUNK_SIZE)
                             setBlock(i, j, k, block);
-            //std::cout << getBlock((int) cameraPosition.x, (int) cameraPosition.y, (int) cameraPosition.z-5).ID << "\n";
         }
         
+        #ifndef NDEBUG
         if (rand() % 10 == 0 && false) {
             std::cout << "\nCamera position:\n";
             std::cout << cameraPosition.x << " " << cameraPosition.y << " " << cameraPosition.z << '\n';
             std::cout << viewAngles.x << " " << viewAngles.y << '\n';
             std::cout << "\n";
         }
+        #endif
 
         blocksChanged = false;
         for (int i = 0; i < CHUNK_GRID_X_SIZE; i++)
@@ -1909,68 +1781,44 @@ private:
                             if (i < CHUNK_GRID_X_SIZE-1) {
                                 borderingChunk = getChunk(i+1, j, k);
                                 getChunk(i, j, k)->generateMesh(POSITIVE_X, borderingChunk, blockTypes);
-                                for (Face face : getChunk(i, j, k)->positiveXFaces)
-                                    uploadFace(face);
                             }
                             else {
                                 getChunk(i, j, k)->generateMesh(POSITIVE_X, NULL, blockTypes);
-                                for (Face face : getChunk(i, j, k)->positiveXFaces)
-                                    uploadFace(face);
                             }
                             if (i > 0) {
                                 borderingChunk = getChunk(i-1, j, k);
                                 getChunk(i, j, k)->generateMesh(NEGATIVE_X, borderingChunk, blockTypes);
-                                for (Face face : getChunk(i, j, k)->negativeXFaces)
-                                    uploadFace(face);
                             }
                             else {
                                 getChunk(i, j, k)->generateMesh(NEGATIVE_X, NULL, blockTypes);
-                                for (Face face : getChunk(i, j, k)->negativeXFaces)
-                                    uploadFace(face);
                             }
                             if (j < CHUNK_GRID_Y_SIZE-1) {
                                 borderingChunk = getChunk(i, j+1, k);
                                 getChunk(i, j, k)->generateMesh(POSITIVE_Y, borderingChunk, blockTypes);
-                                for (Face face : getChunk(i, j, k)->positiveYFaces)
-                                    uploadFace(face);
                             }
                             else {
                                 getChunk(i, j, k)->generateMesh(POSITIVE_Y, NULL, blockTypes);
-                                for (Face face : getChunk(i, j, k)->positiveYFaces)
-                                    uploadFace(face);
                             }
                             if (j > 0) {
                                 borderingChunk = getChunk(i, j-1, k);
                                 getChunk(i, j, k)->generateMesh(NEGATIVE_Y, borderingChunk, blockTypes);
-                                for (Face face : getChunk(i, j, k)->negativeYFaces)
-                                    uploadFace(face);
                             }
                             else {
                                 getChunk(i, j, k)->generateMesh(NEGATIVE_Y, NULL, blockTypes);
-                                for (Face face : getChunk(i, j, k)->negativeYFaces)
-                                    uploadFace(face);
                             }
                             if (k < CHUNK_GRID_Z_SIZE-1) {
                                 borderingChunk = getChunk(i, j, k+1);
                                 getChunk(i, j, k)->generateMesh(POSITIVE_Z, borderingChunk, blockTypes);
-                                for (Face face : getChunk(i, j, k)->positiveZFaces)
-                                    uploadFace(face);
                             }
                             else {
                                 getChunk(i, j, k)->generateMesh(POSITIVE_Z, NULL, blockTypes);
-                                for (Face face : getChunk(i, j, k)->positiveZFaces)
-                                    uploadFace(face);
                             }
                             if (k > 0) {
                                 borderingChunk = getChunk(i, j, k-1);
                                 getChunk(i, j, k)->generateMesh(NEGATIVE_Z, borderingChunk, blockTypes);
-                                for (Face face : getChunk(i, j, k)->negativeZFaces)
-                                    uploadFace(face);
                             }
                             else {
                                 getChunk(i, j, k)->generateMesh(NEGATIVE_Z, NULL, blockTypes);
-                                for (Face face : getChunk(i, j, k)->negativeZFaces)
-                                uploadFace(face);
                             }
                         }
                     }

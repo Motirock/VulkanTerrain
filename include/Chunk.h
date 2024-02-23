@@ -25,16 +25,16 @@ const uint CHUNK_SIZE = 64;
 struct WorldGenerationInfo {
     uint32_t seed;
     float terrainFrequency;
-    float snowHeight;
+    float snowLevel;
     float treeFrequency;
     float minTreeNoiseValue;
     float seaLevel;
     float seaLevelThreshold;
 
-    WorldGenerationInfo(uint32_t seed, float terrainFrequency, float snowHeight, float treeFrequency, float minTreeNoiseValue, float seaLevel, float seaLevelThreshold) {
+    WorldGenerationInfo(uint32_t seed, float terrainFrequency, float snowLevel, float treeFrequency, float minTreeNoiseValue, float seaLevel, float seaLevelThreshold) {
         this->seed = seed;
         this->terrainFrequency = terrainFrequency;
-        this->snowHeight = snowHeight;
+        this->snowLevel = snowLevel;
         this->treeFrequency = treeFrequency;
         this->minTreeNoiseValue = minTreeNoiseValue;
         this->seaLevel = seaLevel;
