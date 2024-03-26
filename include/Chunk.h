@@ -12,7 +12,6 @@ using namespace VkUtils;
 
 enum GenerationMethod {
     NORMAL_GENERATION,
-    BRAIN_GENERATION
 };
 
 enum NoiseMethod {

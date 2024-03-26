@@ -56,6 +56,7 @@ glslc shaders/shader.frag -o shaders/frag.spv
 #include <json/value.h>
 #include <json/writer.h>
 
+#include "StructureType.h"
 #include "Chunk.h"
 
 using namespace VkUtils;
@@ -134,7 +135,7 @@ struct UniformBufferObject {
     alignas(16) glm::vec3 cameraPositionition;
 };
 
-class MCCloneApplication {
+class VulkanTerrainApplication {
 public:
     void run() {
         initWindow();
@@ -217,14 +218,14 @@ private:
     glm::vec3 viewDirection = glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f));
     //Degrees, xy plane, xz plane
     glm::vec2 viewAngles = glm::vec2(45, -30);
-    float FOV = 60.0f;
+    float FOV = 90.0f;
 
-    float speed = 50.0f;
+    float speed = 100.0f;
     float turningSpeed = 2.0f;
 
     bool blocksChanged = true;
 
-    const static int CHUNK_GRID_X_SIZE = 12, CHUNK_GRID_Y_SIZE = 12, CHUNK_GRID_Z_SIZE = 8;
+    const static int CHUNK_GRID_X_SIZE = 8, CHUNK_GRID_Y_SIZE = 8, CHUNK_GRID_Z_SIZE = 8;
     const static int WORLD_X_SIZE = CHUNK_GRID_X_SIZE*CHUNK_SIZE, WORLD_Y_SIZE = CHUNK_GRID_Y_SIZE*CHUNK_SIZE, WORLD_Z_SIZE = CHUNK_GRID_Z_SIZE*CHUNK_SIZE;
     Chunk *chunkGrid[CHUNK_GRID_X_SIZE*CHUNK_GRID_Y_SIZE*CHUNK_GRID_Z_SIZE];
 
@@ -266,7 +267,7 @@ private:
     }
 
     WorldGenerationInfo worldGenerationInfo = WorldGenerationInfo(
-        1u,     //Seed
+        123u,   //Seed
         0.002f, //Terrain frequency
         0.6f,   //Snow level
         2.0f,   //Tree frequency
@@ -317,43 +318,109 @@ private:
         blocksFile >> blocks;
 
         for (Json::Value::ArrayIndex i = 0; i < blocks["blockTypes"].size(); i++) {
+            int ID = blocks["blockTypes"][i]["ID"].asInt();
             if (blockTypes.count(blocks["blockTypes"][i]["ID"].asInt()) > 0)
-                throw std::runtime_error("Block ID already exists\n\tAttempting to replace "+blockTypes[i].name+" with "+blocks["blockTypes"][i]["name"].asString());
-            blockTypes[i].ID = blocks["blockTypes"][i]["ID"].asInt();
-            blockTypes[i].name = blocks["blockTypes"][i]["name"].asString();
-            blockTypes[i].isFullOpaque = blocks["blockTypes"][i]["isFullOpaque"].asBool();
-            blockTypes[i].hideSameNeighbors = blocks["blockTypes"][i]["hideSameNeighbors"].asBool();
-            blockTypes[i].isReplaceable = blocks["blockTypes"][i]["isReplaceable"].asBool();
+                throw std::runtime_error("Block ID already exists\n\tAttempting to replace "+blockTypes[ID].name+" with "+blocks["blockTypes"][i]["name"].asString());
+            blockTypes[ID].ID = blocks["blockTypes"][i]["ID"].asInt();
+            blockTypes[ID].name = blocks["blockTypes"][i]["name"].asString();
+            blockTypes[ID].isFullOpaque = blocks["blockTypes"][i]["isFullOpaque"].asBool();
+            blockTypes[ID].hideSameNeighbors = blocks["blockTypes"][i]["hideSameNeighbors"].asBool();
+            blockTypes[ID].isReplaceable = blocks["blockTypes"][i]["isReplaceable"].asBool();
             for (int j = 0; j < NUMBER_OF_ORIENTATIONS; j++) {
-                blockTypes[i].textureCoordinates[j].first = blocks["blockTypes"][i]["textureCoordinates"][j]["x"].asFloat();
-                blockTypes[i].textureCoordinates[j].second = blocks["blockTypes"][i]["textureCoordinates"][j]["y"].asFloat();
+                blockTypes[ID].textureCoordinates[j].first = blocks["blockTypes"][i]["textureCoordinates"][j]["x"].asFloat();
+                blockTypes[ID].textureCoordinates[j].second = blocks["blockTypes"][i]["textureCoordinates"][j]["y"].asFloat();
             }
         }
     }
 
-    void createTree(int x, int y, int z) {
-        setBlockWithChecks(x-1, y-1, z+4, 8);
-        setBlockWithChecks(x, y-1, z+4, 8);
-        setBlockWithChecks(x+1, y-1, z+4, 8);
-        setBlockWithChecks(x-1, y, z+4, 8);
-        setBlockWithChecks(x+1, y, z+4, 8);
-        setBlockWithChecks(x-1, y+1, z+4, 8);
-        setBlockWithChecks(x, y+1, z+4, 8);
-        setBlockWithChecks(x+1, y+1, z+4, 8);
-        setBlockWithChecks(x, y-1, z+5, 8);
-        setBlockWithChecks(x-1, y, z+5, 8);
-        setBlockWithChecks(x, y, z+5, 8);
-        setBlockWithChecks(x+1, y, z+5, 8);
-        setBlockWithChecks(x, y+1, z+5, 8);
-        for (int i = 0; i < 5; i++) {
-            setBlockWithChecks(x, y, z+i, 7);
-        }
-        for (int i = -2; i <= 2; i++) {
-            for (int j = -2; j <= 2; j++) {
-                for (int k = 2; k <= 3; k++) {
-                    setBlockWithChecks(x+j, y+i, z+k, 8);
-                }
+    std::pair<Block, glm::vec3> getBlockWithCoordinates(std::vector<std::pair<Block, glm::vec3>> &blockVec, int x, int y, int z, int ID) {
+        return std::make_pair(Block(ID), glm::vec3(x, y, z));
+    }
+
+    void addBlockWithCoordinates(std::vector<std::pair<Block, glm::vec3>> &blockVec, int x, int y, int z, int ID) {
+        blockVec.push_back(getBlockWithCoordinates(blockVec, x, y, z, ID));
+    }
+
+    std::map<int, StructureType> structureTypes;
+    void saveStructureTypes(std::string fileName) {
+        Json::Value structures;
+        Json::Value structureTypesData(Json::arrayValue);
+
+        int structureIDCounter = 0;
+        for (const auto& pair : structureTypes) {
+            int key = pair.first;
+            StructureType value = pair.second;
+            Json::Value structureType;
+            structureType["ID"] = value.ID;
+            structureType["name"] = value.name;
+            Json::Value blocks(Json::arrayValue);
+            for (int j = 0; j < value.blocks.size(); j++) {
+                Json::Value block;
+                block["ID"] = value.blocks[j].first.ID;
+                block["position"][0] = value.blocks[j].second.x;
+                block["position"][1] = value.blocks[j].second.y;
+                block["position"][2] = value.blocks[j].second.z;
+                blocks.append(block);
             }
+            structureType["blocks"] = blocks;
+            structureTypesData.append(structureType);
+            structureIDCounter++;
+        }
+
+        structures["structureTypeCount"] = structureIDCounter;
+        structures["structureTypes"] = structureTypesData;
+
+        Json::StreamWriterBuilder builder;
+        builder["commentStyle"] = "None";
+        builder["indentation"] = "   ";
+
+        std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+        std::ofstream outputFileStream("data/"+fileName+".json");
+        writer->write(structures, &outputFileStream);
+    }
+
+    void loadStructureTypes(std::string fileName) {
+        std::ifstream structuresFile("data/structures.json", std::ifstream::binary);
+        Json::Value structures;
+        structuresFile >> structures;
+
+        for (Json::Value::ArrayIndex i = 0; i < structures["structureTypes"].size(); i++) {
+            int ID = structures["structureTypes"][i]["ID"].asInt();
+            if (structureTypes.count(structures["structureTypes"][i]["ID"].asInt()) > 0)
+                throw std::runtime_error("Structure ID already exists\n\tAttempting to replace "+structureTypes[ID].name+" with "+structures["blockTypes"][i]["name"].asString());
+            structureTypes[ID].ID = structures["structureTypes"][i]["ID"].asInt();
+            structureTypes[ID].name = structures["structureTypes"][i]["name"].asString();
+            structureTypes[ID].xBounds = std::make_pair(
+                structures["structureTypes"][i]["xBounds"][0].asInt(),
+                structures["structureTypes"][i]["xBounds"][1].asInt()
+            );
+            structureTypes[ID].yBounds = std::make_pair(
+                structures["structureTypes"][i]["yBounds"][0].asInt(),
+                structures["structureTypes"][i]["yBounds"][1].asInt()
+            );
+            structureTypes[ID].zBounds = std::make_pair(
+                structures["structureTypes"][i]["zBounds"][0].asInt(),
+                structures["structureTypes"][i]["zBounds"][1].asInt()
+            );
+            for (int j = 0; j < structures["structureTypes"][i]["blocks"].size(); j++) {
+                structureTypes[ID].blocks.push_back(std::make_pair(
+                    Block(
+                        structures["structureTypes"][i]["blocks"][j]["ID"].asInt()
+                    ),
+                    glm::vec3(
+                        structures["structureTypes"][i]["blocks"][j]["position"][0].asFloat(),
+                        structures["structureTypes"][i]["blocks"][j]["position"][1].asFloat(),
+                        structures["structureTypes"][i]["blocks"][j]["position"][2].asFloat()
+                    )
+                ));
+            }
+        }
+    }
+
+    void generateStructure(int ID, int x, int y, int z) {
+        StructureType structureType = structureTypes[ID];
+        for (int i = 0; i < structureType.blocks.size(); i++) {
+            setBlockWithChecks(x+structureType.blocks[i].second.x, y+structureType.blocks[i].second.y, z+structureType.blocks[i].second.z, structureType.blocks[i].first);
         }
     }
 
@@ -366,7 +433,7 @@ private:
                 if (treeNoise.octave2D_01(i*worldGenerationInfo.treeFrequency, j*worldGenerationInfo.treeFrequency, 2, 0.5) > worldGenerationInfo.minTreeNoiseValue) {
                     for (int k = WORLD_Z_SIZE-1; k >= 0; k--) {
                         if (getBlock(i, j, k).ID == 4) {
-                            createTree(i, j, k);
+                            generateStructure(0, i, j, k);
                             break;
                         }
                     }
@@ -405,13 +472,13 @@ private:
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-        window = glfwCreateWindow(WIDTH, HEIGHT, "MC Clone", nullptr, nullptr);
+        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan Terrain", nullptr, nullptr);
         glfwSetWindowUserPointer(window, this);
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
     }
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-        auto app = reinterpret_cast<MCCloneApplication*>(glfwGetWindowUserPointer(window));
+        auto app = reinterpret_cast<VulkanTerrainApplication*>(glfwGetWindowUserPointer(window));
         app->framebufferResized = true;
     }
 
@@ -434,6 +501,7 @@ private:
         createTextureImageView();
         createTextureSampler();
         loadBlockTypes("blocks");
+        loadStructureTypes("structures");
         //saveBlockTypes("blocks");
         generateWorld();
         createVertexBuffer(vertexBuffer, MAX_VERTEX_MEMORY, vertexData);
@@ -446,6 +514,9 @@ private:
     }
 
     void input() {
+        float speed = this->speed;
+        if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+            speed = this->speed/5.0f;
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
             cameraPosition += viewDirection*speed*(1.0f/TPS);
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -503,7 +574,7 @@ private:
                     }
                 }
                 std::cout << "Frame time: " << frameTime <<
-                    ", Theoretical maximum FPS: " << (int) (1.0f/frameTime) << "\n"
+                    ", estimated maximum FPS: " << (int) (1.0f/frameTime) << "\n"
                     << "Polygons rendered: " << indexCount/3 << "\n"
                     << "Vertex count: " << vertexCount << " Vertex memory size: " << vertexCount*sizeof(Vertex) << "\n"
                     << "Index count: " << indexCount << " Index memory size: " << indexCount*sizeof(uint32_t) << "\n"
@@ -623,7 +694,7 @@ private:
 
         VkApplicationInfo appInfo{};
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pApplicationName = "MC Clone";
+        appInfo.pApplicationName = "Vulkan Terrain";
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.pEngineName = "No Engine";
         appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -2153,7 +2224,7 @@ private:
 };
 
 int main() {
-    MCCloneApplication app;
+    VulkanTerrainApplication app;
 
     try {
         app.run();

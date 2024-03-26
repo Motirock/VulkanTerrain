@@ -12,7 +12,7 @@ layout(location = 0) out vec4 outColor;
 
 vec3 lightPosition = vec3(100000.0, 100000.0, 100000.0); 
 vec3 lightColor = vec3(1.0, 1.0, 1.0);
-float ambient = 0.1f;
+float ambient = 0.2f;
 
 float maxDistanceAir = 2500.0;
 float minDistanceAir = 500.0;

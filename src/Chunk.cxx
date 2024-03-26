@@ -84,7 +84,9 @@ void Chunk::generateBlocks(WorldGenerationInfo &worldGenerationInfo, const siv::
                 y = this->y + j;
                 for (int k = 0; k < CHUNK_SIZE; k++) {
                     z = this->z + k;
+                    //Only stone (filled in) is replaced
                     if (getBlock(i, j, k).ID == 1) {
+                        //Very top layer
                         if (getNoiseValue(x, y, z+1, worldGenerationInfo, terrainNoise, WORLD_Z_SIZE, TERRAIN_NOISE) < z+1) {
                             if (z >= snowLevel+terrainNoise.noise2D_01(x*worldGenerationInfo.terrainFrequency*100.0f, y*worldGenerationInfo.terrainFrequency*100.0f)*WORLD_Z_SIZE*0.05) {
                                 Block block = Block(9);
@@ -99,6 +101,7 @@ void Chunk::generateBlocks(WorldGenerationInfo &worldGenerationInfo, const siv::
                                 setBlock(i, j, k, block);
                             }
                         }
+                        //Near the top but not the top-most
                         else {
                             for (int I = 2; I <= (int) (terrainNoise.noise2D_01(y, x)*4.0f+1.0f); I++) {
                                 if (getNoiseValue(x, y, z+I, worldGenerationInfo, terrainNoise, WORLD_Z_SIZE, TERRAIN_NOISE) < z+I) {
@@ -175,28 +178,6 @@ void Chunk::generateBlocks(WorldGenerationInfo &worldGenerationInfo, const siv::
         //         }
         //     }
         // }
-        break;
-
-    case BRAIN_GENERATION:
-        for (int i = 0; i < CHUNK_SIZE; i++) {
-            for (int j = 0; j < CHUNK_SIZE; j++) {
-                for (int k = 0; k < CHUNK_SIZE; k++) {
-                    x = this->x + i;
-                    y = this->y + j;
-                    z = this->z + k;
-                    
-                    int blockID = 0;
-                    if (getNoiseValue(x, y, z, worldGenerationInfo, terrainNoise, WORLD_Z_SIZE, CAVE_NOISE) >= 0.45) {
-                        blockID = 1;
-                    }
-                    else
-                        blockID = 0;
-                    
-                    Block block = Block(blockID);
-                    setBlock(i, j, k, block);       
-                }
-            }
-        }
         break;
     }
 
