@@ -12,7 +12,7 @@ Chunk::Chunk(int x, int y, int z) : x(x), y(y), z(z) {
     }
 }
 
-Block& Chunk::getBlock(int x, int y, int z) {
+Block & Chunk::getBlock(int x, int y, int z) {
     return blockGrid[x*CHUNK_SIZE*CHUNK_SIZE+y*CHUNK_SIZE+z];
 }
 

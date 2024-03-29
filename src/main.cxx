@@ -97,7 +97,7 @@ namespace std {
     };
 }
 
-VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
+VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger) {
     auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
     if (func != nullptr) {
         return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
@@ -106,7 +106,7 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMes
     }
 }
 
-void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
+void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator) {
     auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
     if (func != nullptr) {
         func(instance, debugMessenger, pAllocator);
@@ -132,7 +132,7 @@ struct UniformBufferObject {
     alignas(16) glm::mat4 model;
     alignas(16) glm::mat4 view;
     alignas(16) glm::mat4 proj;
-    alignas(16) glm::vec3 cameraPositionition;
+    alignas(16) glm::vec3 cameraPosition;
 };
 
 class VulkanTerrainApplication {
@@ -145,7 +145,7 @@ public:
     }
 
 private:
-    GLFWwindow* window;
+    GLFWwindow *window;
 
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -220,16 +220,18 @@ private:
     glm::vec2 viewAngles = glm::vec2(45, -30);
     float FOV = 90.0f;
 
-    float speed = 100.0f;
-    float turningSpeed = 2.0f;
+    float interactRange = 5.0f;
+
+    float speed = 10.0f;
+    float turningSensitivity = 0.2f;
 
     bool blocksChanged = true;
 
-    const static int CHUNK_GRID_X_SIZE = 8, CHUNK_GRID_Y_SIZE = 8, CHUNK_GRID_Z_SIZE = 8;
+    const static int CHUNK_GRID_X_SIZE = 8, CHUNK_GRID_Y_SIZE = 8, CHUNK_GRID_Z_SIZE = 1;
     const static int WORLD_X_SIZE = CHUNK_GRID_X_SIZE*CHUNK_SIZE, WORLD_Y_SIZE = CHUNK_GRID_Y_SIZE*CHUNK_SIZE, WORLD_Z_SIZE = CHUNK_GRID_Z_SIZE*CHUNK_SIZE;
     Chunk *chunkGrid[CHUNK_GRID_X_SIZE*CHUNK_GRID_Y_SIZE*CHUNK_GRID_Z_SIZE];
 
-    Chunk* getChunk(uint32_t x, uint32_t y, uint32_t z) {
+    Chunk *getChunk(uint32_t x, uint32_t y, uint32_t z) {
         return chunkGrid[x*CHUNK_GRID_Y_SIZE*CHUNK_GRID_Z_SIZE+y*CHUNK_GRID_Z_SIZE+z];
     }
 
@@ -475,12 +477,73 @@ private:
         window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan Terrain", nullptr, nullptr);
         glfwSetWindowUserPointer(window, this);
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+        glfwSetMouseButtonCallback(window, mouseButtonCallback);
+        glfwSetCursorPosCallback(window, cursorPosCallback);
+        glfwSetCursorEnterCallback(window, cursorEnterCallback);
+        glfwSetScrollCallback(window, scrollCallback);
     }
 
-    static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+    static void framebufferResizeCallback(GLFWwindow *window, int width, int height) {
         auto app = reinterpret_cast<VulkanTerrainApplication*>(glfwGetWindowUserPointer(window));
         app->framebufferResized = true;
     }
+
+    static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods) {
+        auto app = reinterpret_cast<VulkanTerrainApplication*>(glfwGetWindowUserPointer(window));
+        if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+            double xPos, yPos;
+            glfwGetCursorPos(window, &xPos, &yPos);
+            app->mouseX = xPos/app->swapChainExtent.width;
+            app->mouseY = yPos/app->swapChainExtent.height;
+            app->mouseLeftPressed = true;
+        }
+        if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+            double xPos, yPos;
+            glfwGetCursorPos(window, &xPos, &yPos);
+            app->mouseX = xPos/app->swapChainExtent.width;
+            app->mouseY = yPos/app->swapChainExtent.height;
+            app->mouseLeftPressed = false;
+            app->mouseLeftClicked = true;
+        }
+        if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+            double xPos, yPos;
+            glfwGetCursorPos(window, &xPos, &yPos);
+            app->mouseX = xPos/app->swapChainExtent.width;
+            app->mouseY = yPos/app->swapChainExtent.height;
+            app->mouseRightPressed = true;
+        }
+        if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE) {
+            double xPos, yPos;
+            glfwGetCursorPos(window, &xPos, &yPos);
+            app->mouseX = xPos/app->swapChainExtent.width;
+            app->mouseY = yPos/app->swapChainExtent.height;
+            app->mouseRightPressed = false;
+            app->mouseRightClicked = true;
+        }
+        app->cursorJustEntered = false;
+        //std::cout << "Cursor Position at (" << (float) app->mouseX << " : " << (float) app->mouseX << ") " << app->mouseLeftPressed << "\n";
+    }
+
+    static void cursorPosCallback(GLFWwindow *window, double xPos, double yPos) {
+        auto app = reinterpret_cast<VulkanTerrainApplication*>(glfwGetWindowUserPointer(window));
+        if (!app->cursorJustEntered) {
+            app->mouseX = xPos/app->swapChainExtent.width;
+            app->mouseY = yPos/app->swapChainExtent.height;
+        }
+        app->cursorJustEntered = false;
+        //std::cout << "Cursor Position at (" << (float) app->mouseX << " : " << (float) app->mouseX << ") " << app->mouseLeftPressed << "\n";
+    }
+
+    static void cursorEnterCallback(GLFWwindow *window, int entered) {
+        auto app = reinterpret_cast<VulkanTerrainApplication*>(glfwGetWindowUserPointer(window));
+        app->cursorJustEntered = true;
+    }
+
+    static void scrollCallback(GLFWwindow *window, double xOffset, double yOffset) {
+        auto app = reinterpret_cast<VulkanTerrainApplication*>(glfwGetWindowUserPointer(window));
+        app->scrollAmount = (float) yOffset;
+    }
+
 
     void initVulkan() {
         createInstance();
@@ -502,7 +565,6 @@ private:
         createTextureSampler();
         loadBlockTypes("blocks");
         loadStructureTypes("structures");
-        //saveBlockTypes("blocks");
         generateWorld();
         createVertexBuffer(vertexBuffer, MAX_VERTEX_MEMORY, vertexData);
         createIndexBuffer(indexBuffer, MAX_INDEX_MEMORY, indexData);
@@ -513,6 +575,13 @@ private:
         createSyncObjects();
     }
 
+    float mouseX = 0.0f, mouseY = 0.0f;
+    float previousMouseX = mouseX, previousMouseY = mouseY;
+    bool mouseLeftPressed = false, mouseRightPressed = false;
+    bool mouseLeftClicked = false, mouseRightClicked = false;
+    float scrollAmount = 0;
+    bool lockedIn = false;
+    bool cursorJustEntered = false;
     void input() {
         float speed = this->speed;
         if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
@@ -535,14 +604,83 @@ private:
                 std::cos(glm::radians(-viewAngles.x-90))*std::cos(glm::radians(viewAngles.y)), 
                 std::sin(glm::radians(-viewAngles.x-90))*std::cos(glm::radians(viewAngles.y)), 
                 0))*speed*(1.0f/TPS);
-        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-            viewAngles.y += turningSpeed;
+
+        //Mouseless turning
+        /*if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+            viewAngles.y += turningSensitivity;
         if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-            viewAngles.y -= turningSpeed;
+            viewAngles.y -= turningSensitivity;
         if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-            viewAngles.x -= turningSpeed;
+            viewAngles.x -= turningSensitivity;
         if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-            viewAngles.x += turningSpeed;
+            viewAngles.x += turningSensitivity;*/
+
+        bool lockingIn = !lockedIn && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS;
+        bool unlocking = lockedIn && glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
+        lockedIn = glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS;
+
+        if (lockingIn)
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        if (lockedIn && !lockingIn) {
+            viewAngles.x += (mouseX-previousMouseX)*turningSensitivity*swapChainExtent.width;
+            viewAngles.y -= (mouseY-previousMouseY)*turningSensitivity*swapChainExtent.height;
+        }
+        if (unlocking)
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+
+        glm::vec3 viewDirection = glm::normalize(glm::vec3(
+            std::cos(glm::radians(-viewAngles.x))*std::cos(glm::radians(viewAngles.y)), 
+            std::sin(glm::radians(-viewAngles.x))*std::cos(glm::radians(viewAngles.y)), 
+            std::sin(glm::radians(viewAngles.y))
+        ));
+        if (mouseLeftClicked) {
+            glm::vec3 position = cameraPosition;
+            for (float i = 0.0f; i <= interactRange; i += 0.1f) {
+                position += viewDirection/10.0f;
+                int x = (int) position.x;
+                int y = (int) position.y;
+                int z = (int) position.z;
+                if (!(x >= 0 && x < CHUNK_GRID_X_SIZE*CHUNK_SIZE && y >= 0 && y < CHUNK_GRID_Y_SIZE*CHUNK_SIZE && z >= 0 && z < CHUNK_GRID_Z_SIZE*CHUNK_SIZE))
+                    continue;
+                if (getBlock(x, y, z).ID != 0) {
+                    setBlock(x, y, z, 0);
+                    break;
+                }
+            }        
+        }
+        if (mouseRightClicked) {
+            glm::vec3 position = cameraPosition;
+            for (float i = 0.0f; i <= interactRange; i += 0.1f) {
+                position += viewDirection/10.0f;
+                int x = (int) position.x;
+                int y = (int) position.y;
+                int z = (int) position.z;
+                if ((x == (int) cameraPosition.x && y == (int) cameraPosition.y && z == (int) cameraPosition.z) 
+                    || !(x >= 0 && x < CHUNK_GRID_X_SIZE*CHUNK_SIZE && y >= 0 && y < CHUNK_GRID_Y_SIZE*CHUNK_SIZE && z >= 0 && z < CHUNK_GRID_Z_SIZE*CHUNK_SIZE))
+                    continue;
+                if (getBlock(x, y, z).ID != 0) {
+                    glm::vec3 previousPosition = position-viewDirection/10.0f;
+                    int previousX = (int) previousPosition.x;
+                    int previousY = (int) previousPosition.y;
+                    int previousZ = (int) previousPosition.z;
+                    if (previousX == (int) cameraPosition.x && previousY == (int) cameraPosition.y && previousZ == (int) cameraPosition.z 
+                        || !(previousX >= 0 && previousX < CHUNK_GRID_X_SIZE*CHUNK_SIZE && previousY >= 0 && previousY < CHUNK_GRID_Y_SIZE*CHUNK_SIZE && previousZ >= 0 && previousZ < CHUNK_GRID_Z_SIZE*CHUNK_SIZE))
+                        break;
+                    setBlock(previousX, previousY, previousZ, 1);
+                    break;
+                }
+
+                    
+            }        
+        }
+
+
+        previousMouseX = mouseX;
+        previousMouseY = mouseY;
+
+        mouseLeftClicked = false;
+        mouseRightClicked = false;
     }
 
     void mainLoop() {
@@ -573,12 +711,12 @@ private:
                         }
                     }
                 }
-                std::cout << "Frame time: " << frameTime <<
-                    ", estimated maximum FPS: " << (int) (1.0f/frameTime) << "\n"
-                    << "Polygons rendered: " << indexCount/3 << "\n"
-                    << "Vertex count: " << vertexCount << " Vertex memory size: " << vertexCount*sizeof(Vertex) << "\n"
-                    << "Index count: " << indexCount << " Index memory size: " << indexCount*sizeof(uint32_t) << "\n"
-                    << "\n";
+                // std::cout << "Frame time: " << frameTime <<
+                //     ", estimated maximum FPS: " << (int) (1.0f/frameTime) << "\n"
+                //     << "Polygons rendered: " << indexCount/3 << "\n"
+                //     << "Vertex count: " << vertexCount << " Vertex memory size: " << vertexCount*sizeof(Vertex) << "\n"
+                //     << "Index count: " << indexCount << " Index memory size: " << indexCount*sizeof(uint32_t) << "\n"
+                //     << "\n";
                 }
                 #endif
                 ticks++;
@@ -1281,9 +1419,9 @@ private:
 
     void createTextureImage() {
         int texWidth, texHeight, texChannels;
-        stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-        VkDeviceSize imageSize = texWidth * texHeight * 4;
-        mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+        stbi_uc *pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+        VkDeviceSize imageSize = texWidth*texHeight*4;
+        mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight))))+1;
 
         if (!pixels) {
             throw std::runtime_error("failed to load texture image!");
@@ -1293,7 +1431,7 @@ private:
         VkDeviceMemory stagingBufferMemory;
         createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
-        void* data;
+        void *data;
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
             memcpy(data, pixels, static_cast<size_t>(imageSize));
         vkUnmapMemory(device, stagingBufferMemory);
@@ -1782,10 +1920,13 @@ private:
 
         if (viewAngles.y >= 180)
             viewAngles.y = 180-viewAngles.y;
-        if (viewAngles.y >= 90)
-            viewAngles.y = 89.999f;
-        else if (viewAngles.y <= -90)
-            viewAngles.y = -89.999f;
+        if (viewAngles.y >= 80.0f)
+            viewAngles.y = 80.0f;
+        else if (viewAngles.y <= -80.0f)
+            viewAngles.y = -80.0f;
+
+        viewAngles.x = fmod(viewAngles.x, 360.0f);
+        viewAngles.y = fmod(viewAngles.y, 360.0f);
         
         viewDirection = glm::normalize(glm::vec3(
             std::cos(glm::radians(-viewAngles.x))*std::cos(glm::radians(viewAngles.y)), 
@@ -1799,7 +1940,7 @@ private:
         ubo.proj = glm::perspective(glm::radians(FOV), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10000.0f);
         ubo.proj[1][1] *= -1;
 
-        ubo.cameraPositionition = cameraPosition;
+        ubo.cameraPosition = cameraPosition;
 
         memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
@@ -1814,16 +1955,7 @@ private:
         memcpy(indexData, indices.data(), bufferSize);
     }
 
-    void update() {
-        if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) {
-            Block block = Block(0);
-            for (int i = cameraPosition.x-5; i <= cameraPosition.x+5; i++)
-                for (int j = cameraPosition.y-5; j <= cameraPosition.y+5; j++)
-                    for (int k = cameraPosition.z-5; k <= cameraPosition.z+5; k++)
-                        if (i >= 0 && i < CHUNK_GRID_X_SIZE*CHUNK_SIZE && j >= 0 && j < CHUNK_GRID_Y_SIZE*CHUNK_SIZE && k >= 0 && k < CHUNK_GRID_Z_SIZE*CHUNK_SIZE)
-                            setBlock(i, j, k, block);
-        }
-        
+    void update() {        
         #ifndef NDEBUG
         if (rand() % 10 == 0 && false) {
             std::cout << "\nCamera position:\n";
@@ -2017,7 +2149,7 @@ private:
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
-    VkShaderModule createShaderModule(const std::vector<char>& code) {
+    VkShaderModule createShaderModule(const std::vector<char> &code) {
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         createInfo.codeSize = code.size();
@@ -2161,7 +2293,7 @@ private:
 
     std::vector<const char*> getRequiredExtensions() {
         uint32_t glfwExtensionCount = 0;
-        const char** glfwExtensions;
+        const char **glfwExtensions;
         glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
         std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
@@ -2180,7 +2312,7 @@ private:
         std::vector<VkLayerProperties> availableLayers(layerCount);
         vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-        for (const char* layerName : validationLayers) {
+        for (const char *layerName : validationLayers) {
             bool layerFound = false;
 
             for (const auto& layerProperties : availableLayers) {
@@ -2216,7 +2348,7 @@ private:
         return buffer;
     }
 
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData) {
         std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 
         return VK_FALSE;
