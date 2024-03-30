@@ -14,13 +14,13 @@ vec3 lightPosition = vec3(100000.0, 100000.0, 100000.0);
 vec3 lightColor = vec3(1.0, 1.0, 1.0);
 float ambient = 0.2f;
 
-float maxDistanceAir = 2500.0;
-float minDistanceAir = 500.0;
+float maxDistanceAir = 5000.0;
+float minDistanceAir = 100.0;
 float distanceFadeAir() {
     return clamp((distanceFromCamera - minDistanceAir) / (maxDistanceAir - minDistanceAir), 0.0, 1.0);
 }
 
-vec4 skyColor = vec4(0.3f, 0.3f, 0.6f, 1.0f);
+vec4 skyColor = vec4(0.2f, 0.25f, 0.7f, 1.0f);
 
 void main() {
     if (distanceFromCamera > maxDistanceAir) {

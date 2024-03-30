@@ -41,18 +41,13 @@ struct WorldGenerationInfo {
     }
 };
 
-struct Chunk {
-    int x;
-    int y;
-    int z;
-
-    bool blocksChanged = true;
-
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
+struct ChunkGeometry {
     uint32_t vertexCount = 0;
     uint32_t indexCount = 0;
     uint32_t maxVertexCount = 0;
+
+    VkDevice device = VK_NULL_HANDLE;
+
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
     VkBuffer indexBuffer;
@@ -60,14 +55,28 @@ struct Chunk {
     void *vertexData;
     void *indexData;
 
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+
+    ~ChunkGeometry();
+
+    void uploadVertices();
+    void uploadIndices();
+
+    std::string toString();
+};
+
+struct Chunk {
+    int x;
+    int y;
+    int z;
+
+    bool blocksChanged = true;
+
     Block blockGrid[CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE];
 
-    std::vector<Face> positiveXFaces = std::vector<Face>();
-    std::vector<Face> negativeXFaces = std::vector<Face>();
-    std::vector<Face> positiveYFaces = std::vector<Face>();
-    std::vector<Face> negativeYFaces = std::vector<Face>();
-    std::vector<Face> positiveZFaces = std::vector<Face>();
-    std::vector<Face> negativeZFaces = std::vector<Face>();
+    ChunkGeometry geometry;
+    std::vector<Face> faces[NUMBER_OF_ORIENTATIONS];
 
     Chunk(int x, int y, int z);
 
@@ -82,9 +91,6 @@ struct Chunk {
 
     void uploadFace(Face &face, std::map<int, BlockType> &blockTypes);
     void uploadFaces(Orientation orientation, std::map<int, BlockType> &blockTypes);
-
-    void uploadVertices();
-    void uploadIndices();
 };
 
 #endif

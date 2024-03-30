@@ -227,7 +227,7 @@ private:
 
     bool blocksChanged = true;
 
-    const static int CHUNK_GRID_X_SIZE = 8, CHUNK_GRID_Y_SIZE = 8, CHUNK_GRID_Z_SIZE = 1;
+    const static int CHUNK_GRID_X_SIZE = 12, CHUNK_GRID_Y_SIZE = 12, CHUNK_GRID_Z_SIZE = 12;
     const static int WORLD_X_SIZE = CHUNK_GRID_X_SIZE*CHUNK_SIZE, WORLD_Y_SIZE = CHUNK_GRID_Y_SIZE*CHUNK_SIZE, WORLD_Z_SIZE = CHUNK_GRID_Z_SIZE*CHUNK_SIZE;
     Chunk *chunkGrid[CHUNK_GRID_X_SIZE*CHUNK_GRID_Y_SIZE*CHUNK_GRID_Z_SIZE];
 
@@ -269,7 +269,7 @@ private:
     }
 
     WorldGenerationInfo worldGenerationInfo = WorldGenerationInfo(
-        123u,   //Seed
+        51107u,   //Seed
         0.002f, //Terrain frequency
         0.6f,   //Snow level
         2.0f,   //Tree frequency
@@ -453,6 +453,7 @@ private:
                 for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
                     Chunk *tempChunk = new Chunk(i*CHUNK_SIZE, j*CHUNK_SIZE, k*CHUNK_SIZE);
                     setChunk(i, j, k, tempChunk);
+                    tempChunk->geometry.device = device;
                 }
             }
         }
@@ -706,17 +707,17 @@ private:
                 for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
                     for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
                         for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
-                            vertexCount += getChunk(i, j, k)->vertexCount;
-                            indexCount += getChunk(i, j, k)->indexCount;
+                            vertexCount += getChunk(i, j, k)->geometry.vertexCount;
+                            indexCount += getChunk(i, j, k)->geometry.indexCount;
                         }
                     }
                 }
-                // std::cout << "Frame time: " << frameTime <<
-                //     ", estimated maximum FPS: " << (int) (1.0f/frameTime) << "\n"
-                //     << "Polygons rendered: " << indexCount/3 << "\n"
-                //     << "Vertex count: " << vertexCount << " Vertex memory size: " << vertexCount*sizeof(Vertex) << "\n"
-                //     << "Index count: " << indexCount << " Index memory size: " << indexCount*sizeof(uint32_t) << "\n"
-                //     << "\n";
+                std::cout << "Frame time: " << frameTime <<
+                    ", estimated maximum FPS: " << (int) (1.0f/frameTime) << "\n"
+                    << "Polygons rendered: " << indexCount/3 << "\n"
+                    << "Vertex count: " << vertexCount << " Vertex memory size: " << vertexCount*sizeof(Vertex) << "\n"
+                    << "Index count: " << indexCount << " Index memory size: " << indexCount*sizeof(uint32_t) << "\n"
+                    << "\n";
                 }
                 #endif
                 ticks++;
@@ -750,10 +751,7 @@ private:
         for (int i = 0; i < CHUNK_GRID_X_SIZE; i++) {
             for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
                 for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
-                    vkDestroyBuffer(device, getChunk(i, j, k)->indexBuffer, nullptr);
-                    vkFreeMemory(device, getChunk(i, j, k)->indexBufferMemory, nullptr);
-                    vkDestroyBuffer(device, getChunk(i, j, k)->vertexBuffer, nullptr);
-                    vkFreeMemory(device, getChunk(i, j, k)->vertexBufferMemory, nullptr);
+                    delete getChunk(i, j, k);
                 }
             }
         }
@@ -1823,7 +1821,7 @@ private:
         renderPassInfo.renderArea.extent = swapChainExtent;
 
         std::array<VkClearValue, 2> clearValues{};
-        clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+        clearValues[0].color = {{0.3f, 0.3f, 0.6f, 1.0f}};
         clearValues[1].depthStencil = {1.0f, 0};
 
         renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -1860,7 +1858,8 @@ private:
             std::vector<Chunk *> chunksSorted = std::vector<Chunk *>();
             for (int i = 0; i < chunkCount; i++) {
                 Chunk *chunk = chunkGrid[i];
-                if (chunk->vertexCount == 0)
+                
+                if (chunk->geometry.vertexCount == 0)
                     continue;
                 bool isShortestDistance = true;
                 for (int j = 0; j < chunksSorted.size(); j++) {
@@ -1875,13 +1874,23 @@ private:
                     chunksSorted.push_back(chunk);
             }
 
+            glm::vec3 viewDirection = glm::normalize(glm::vec3(
+                std::cos(glm::radians(-viewAngles.x))*std::cos(glm::radians(viewAngles.y)), 
+                std::sin(glm::radians(-viewAngles.x))*std::cos(glm::radians(viewAngles.y)), 
+                std::sin(glm::radians(viewAngles.y))
+            ));
             for (Chunk *chunk : chunksSorted) {
-                VkBuffer vertexBuffers[] = {chunk->vertexBuffer};
+                ChunkGeometry &geometry = chunk->geometry; 
+
+                if (geometry.vertexCount == 0)
+                    continue;
+                
+                VkBuffer vertexBuffers[] = {geometry.vertexBuffer};
                 VkDeviceSize offsets[] = {0};
 
                 vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-                vkCmdBindIndexBuffer(commandBuffer, chunk->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-                vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(chunk->indexCount), 1, 0, 0, 0);
+                vkCmdBindIndexBuffer(commandBuffer, geometry.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+                vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(geometry.indexCount), 1, 0, 0, 0);
             }
 
         vkCmdEndRenderPass(commandBuffer);
@@ -1957,7 +1966,7 @@ private:
 
     void update() {        
         #ifndef NDEBUG
-        if (rand() % 10 == 0 && false) {
+        if (ticks % 10 == 0 && false) {
             std::cout << "\nCamera position:\n";
             std::cout << cameraPosition.x << " " << cameraPosition.y << " " << cameraPosition.z << '\n';
             std::cout << viewAngles.x << " " << viewAngles.y << '\n';
@@ -2037,48 +2046,33 @@ private:
                 for (int j = 0; j < CHUNK_GRID_Y_SIZE; j++) {
                     for (int k = 0; k < CHUNK_GRID_Z_SIZE; k++) {
                         Chunk *chunk = getChunk(i, j, k);
-                        chunk->vertices.clear();
-                        chunk->indices.clear();
-                        chunk->uploadFaces(POSITIVE_X, blockTypes);
-                        chunk->uploadFaces(NEGATIVE_X, blockTypes);
-                        chunk->uploadFaces(POSITIVE_Y, blockTypes);
-                        chunk->uploadFaces(NEGATIVE_Y, blockTypes);
-                        chunk->uploadFaces(POSITIVE_Z, blockTypes);
-                        chunk->uploadFaces(NEGATIVE_Z, blockTypes);
-                        if (chunk->vertices.size() > 0) {
-                            if (chunk->vertices.size() > chunk->maxVertexCount) {
-                                if (chunk->maxVertexCount > 0) {
-                                    vkDestroyBuffer(device, chunk->indexBuffer, nullptr);
-                                    vkFreeMemory(device, chunk->indexBufferMemory, nullptr);
-                                    vkDestroyBuffer(device, chunk->vertexBuffer, nullptr);
-                                    vkFreeMemory(device, chunk->vertexBufferMemory, nullptr);
-                                }
-                                chunk->maxVertexCount = chunk->vertices.size()+4*20;
-                                createVertexBuffer(chunk->vertexBuffer, chunk->maxVertexCount*sizeof(Vertex), chunk->vertexData);
-                                createIndexBuffer(chunk->indexBuffer, chunk->maxVertexCount*3/2*sizeof(uint32_t), chunk->indexData);
-                            }
-                            chunk->uploadVertices();
-                            chunk->uploadIndices();
+                        ChunkGeometry &geometry = chunk->geometry;
 
-                            chunk->vertices.clear();
-                            chunk->indices.clear();
+                        geometry.vertices.clear();
+                        geometry.indices.clear();
+                        for (int orientation = 0; orientation < NUMBER_OF_ORIENTATIONS; orientation++)
+                            chunk->uploadFaces((Orientation) orientation, blockTypes);
+                        if (geometry.vertices.size() > 0) {
+                            if (geometry.vertices.size() > geometry.maxVertexCount) {
+                                if (geometry.maxVertexCount > 0) {
+                                    vkDestroyBuffer(device, geometry.indexBuffer, nullptr);
+                                    vkFreeMemory(device, geometry.indexBufferMemory, nullptr);
+                                    vkDestroyBuffer(device, geometry.vertexBuffer, nullptr);
+                                    vkFreeMemory(device, geometry.vertexBufferMemory, nullptr);
+                                }
+                                geometry.maxVertexCount = geometry.vertices.size()+4*20;
+                                createVertexBuffer(geometry.vertexBuffer, geometry.maxVertexCount*sizeof(Vertex), geometry.vertexData);
+                                createIndexBuffer(geometry.indexBuffer, geometry.maxVertexCount*3/2*sizeof(uint32_t), geometry.indexData);
+                            }
+                            geometry.uploadVertices();
+                            geometry.uploadIndices();
+
+                            geometry.vertices.clear();
+                            geometry.indices.clear();
                         }
                     }
                 }
             }
-            // uint32_t vertexCount = vertices.size();
-            // uint32_t normalAndColor = packNormalAndColor(POSITIVE_Z, 1.0f, 1.0f, 1.0f);
-            // vertices.push_back(Vertex{glm::vec3(-10000.0f, -10000.0f, -10000.0f), glm::vec2(0.5f, 0.6f), normalAndColor});
-            // vertices.push_back(Vertex{glm::vec3(WORLD_X_SIZE+10000.0f, -10000.0f, -10000.0f), glm::vec2(0.6f, 0.6f), normalAndColor});
-            // vertices.push_back(Vertex{glm::vec3(-10000.0f, WORLD_Y_SIZE+10000.0f, -10000.0f), glm::vec2(0.5f, 0.5f), normalAndColor});
-            // vertices.push_back(Vertex{glm::vec3(WORLD_X_SIZE+10000.0f, WORLD_Y_SIZE+10000.0f, -10000.0f), glm::vec2(0.6f, 0.5f), normalAndColor});
-
-            // indices.push_back(vertexCount+0);
-            // indices.push_back(vertexCount+1);
-            // indices.push_back(vertexCount+3);
-            // indices.push_back(vertexCount+0);
-            // indices.push_back(vertexCount+3);
-            // indices.push_back(vertexCount+2);
             
             uploadVertices();
             uploadIndices();

@@ -2,6 +2,35 @@
 
 #include <iostream>
 
+ChunkGeometry::~ChunkGeometry() {
+    vkDestroyBuffer(device, vertexBuffer, nullptr);
+    vkFreeMemory(device, vertexBufferMemory, nullptr);
+    vkDestroyBuffer(device, indexBuffer, nullptr);
+    vkFreeMemory(device, indexBufferMemory, nullptr);
+}
+
+void ChunkGeometry::uploadVertices() {
+    vertexCount = vertices.size();
+    VkDeviceSize bufferSize = vertexCount*sizeof(Vertex);
+    memcpy(vertexData, vertices.data(), bufferSize);
+}
+
+void ChunkGeometry::uploadIndices() {
+    indexCount = indices.size();
+    VkDeviceSize bufferSize = indexCount*sizeof(uint32_t);
+    memcpy(indexData, indices.data(), bufferSize);
+}
+
+std::string ChunkGeometry::toString() {
+    std::string s = "ChunkGeometry:\n";
+    s += "vertexCount: " + std::to_string(vertexCount) + "\n";
+    s += "indexCount: " + std::to_string(indexCount) + "\n";
+    s += "maxVertexCount: " + std::to_string(maxVertexCount) + "\n";
+    s += "vertices: " + std::to_string(vertices.size()) + "\n";
+    s += "indices: " + std::to_string(indices.size()) + "\n";
+    return s;
+}
+
 Chunk::Chunk(int x, int y, int z) : x(x), y(y), z(z) {
     for (int i = 0; i < CHUNK_SIZE; i++) {
         for (int j = 0; j < CHUNK_SIZE; j++) {
@@ -192,78 +221,78 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk, std::ma
     if (borderingChunk == NULL) {
     switch (orientation) {
     case POSITIVE_X:
-        positiveXFaces.clear();
+        faces[orientation].clear();
         for (int i = 0; i < CHUNK_SIZE; i++) {
             for (int j = 0; j < CHUNK_SIZE; j++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
                     if (getBlock(i, j, k).ID != 0 && i != CHUNK_SIZE - 1 && !blockTypes[getBlock(i + 1, j, k).ID].isFullOpaque 
                         && !(getBlock(i + 1, j, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors)) {
-                        positiveXFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_X, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, POSITIVE_X, getBlock(i, j, k).ID));
                     }
                 }
             }
         }
         break;
     case NEGATIVE_X:
-        negativeXFaces.clear();
+        faces[orientation].clear();
         for (int i = CHUNK_SIZE-1; i >= 0; i--) {
             for (int j = 0; j < CHUNK_SIZE; j++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
                     if (getBlock(i, j, k).ID != 0 && i != 0 && !blockTypes[getBlock(i - 1, j, k).ID].isFullOpaque 
                         && !(getBlock(i - 1, j, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors)) {
-                        negativeXFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, NEGATIVE_X, getBlock(i, j, k).ID));
                     }
                 }
             }
         }
         break;
     case POSITIVE_Y:
-        positiveYFaces.clear();
+        faces[orientation].clear();
         for (int j = 0; j < CHUNK_SIZE; j++) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
                     if (getBlock(i, j, k).ID != 0 && j != CHUNK_SIZE - 1 && !blockTypes[getBlock(i, j + 1, k).ID].isFullOpaque 
                         && !(getBlock(i, j + 1, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors)) {
-                        positiveYFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Y, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, POSITIVE_Y, getBlock(i, j, k).ID));
                     }
                 }
             }
         }
         break;
     case NEGATIVE_Y:
-        negativeYFaces.clear();
+        faces[orientation].clear();
         for (int j = CHUNK_SIZE-1; j >= 0; j--) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
                     if (getBlock(i, j, k).ID != 0 && j != 0 && !blockTypes[getBlock(i, j-1, k).ID].isFullOpaque 
                         && !(getBlock(i, j-1, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors)) {
-                        negativeYFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, getBlock(i, j, k).ID));
                     }
                 }
             }
         }
         break;
     case POSITIVE_Z:
-        positiveZFaces.clear();
+        faces[orientation].clear();
         for (int k = 0; k < CHUNK_SIZE; k++) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int j = 0; j < CHUNK_SIZE; j++) {
                     if (getBlock(i, j, k).ID != 0 && k != CHUNK_SIZE - 1 && !blockTypes[getBlock(i, j, k+1).ID].isFullOpaque 
                         && !(getBlock(i, j, k+1).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors)) {
-                        positiveZFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Z, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, POSITIVE_Z, getBlock(i, j, k).ID));
                     }
                 }
             }
         }
         break;
     case NEGATIVE_Z:
-        negativeZFaces.clear();
+        faces[orientation].clear();
         for (int k = CHUNK_SIZE-1; k >= 0; k--) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int j = 0; j < CHUNK_SIZE; j++) {
                     if (getBlock(i, j, k).ID != 0 && k != 0 && !blockTypes[getBlock(i, j, k-1).ID].isFullOpaque 
                         && !(getBlock(i, j, k-1).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors)) {
-                        negativeZFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, getBlock(i, j, k).ID));
                     }
                 }
             }
@@ -275,7 +304,7 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk, std::ma
     else {
     switch (orientation) {
     case POSITIVE_X:
-        positiveXFaces.clear();
+        faces[orientation].clear();
         for (int i = 0; i < CHUNK_SIZE; i++) {
             for (int j = 0; j < CHUNK_SIZE; j++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
@@ -283,16 +312,16 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk, std::ma
                         continue;
                     if (i == CHUNK_SIZE - 1 && !blockTypes[borderingChunk->getBlock(0, j, k).ID].isFullOpaque 
                         && !(borderingChunk->getBlock(0, j, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
-                        positiveXFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_X, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, POSITIVE_X, getBlock(i, j, k).ID));
                     else if (i < CHUNK_SIZE-1 && !blockTypes[getBlock(i+1, j, k).ID].isFullOpaque 
                         && !(getBlock(i+1, j, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
-                        positiveXFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_X, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, POSITIVE_X, getBlock(i, j, k).ID));
                 }
             }
         }
         break;
     case NEGATIVE_X:
-        negativeXFaces.clear();
+        faces[orientation].clear();
         for (int i = CHUNK_SIZE-1; i >= 0; i--) {
             for (int j = 0; j < CHUNK_SIZE; j++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
@@ -300,16 +329,16 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk, std::ma
                         continue;
                     if (i == 0 && !blockTypes[borderingChunk->getBlock(CHUNK_SIZE-1, j, k).ID].isFullOpaque 
                         && !(borderingChunk->getBlock(CHUNK_SIZE-1, j, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
-                        negativeXFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, NEGATIVE_X, getBlock(i, j, k).ID));
                     else if (i > 0 && !blockTypes[getBlock(i-1, j, k).ID].isFullOpaque 
                        && !(getBlock(i-1, j, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
-                       negativeXFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_X, getBlock(i, j, k).ID));
+                       faces[orientation].push_back(Face(x+i, y+j, z+k, NEGATIVE_X, getBlock(i, j, k).ID));
                 }
             }
         }
         break;
     case POSITIVE_Y:
-        positiveYFaces.clear();
+        faces[orientation].clear();
         for (int j = 0; j < CHUNK_SIZE; j++) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
@@ -317,16 +346,16 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk, std::ma
                         continue;
                     if (j == CHUNK_SIZE - 1 && !blockTypes[borderingChunk->getBlock(i, 0, k).ID].isFullOpaque 
                         && !(borderingChunk->getBlock(i, 0, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
-                        positiveYFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Y, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, POSITIVE_Y, getBlock(i, j, k).ID));
                     else if (j < CHUNK_SIZE-1 && !blockTypes[getBlock(i, j+1, k).ID].isFullOpaque 
                         && !(getBlock(i, j+1, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
-                        positiveYFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Y, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, POSITIVE_Y, getBlock(i, j, k).ID));
                 }
             }
         }
         break;
     case NEGATIVE_Y:
-        negativeYFaces.clear();
+        faces[orientation].clear();
         for (int j = CHUNK_SIZE-1; j >= 0; j--) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int k = 0; k < CHUNK_SIZE; k++) {
@@ -334,16 +363,16 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk, std::ma
                         continue;
                     if (j == 0 && !blockTypes[borderingChunk->getBlock(i, CHUNK_SIZE-1, k).ID].isFullOpaque 
                         && !(borderingChunk->getBlock(i, CHUNK_SIZE-1, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
-                        negativeYFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, getBlock(i, j, k).ID));
                     else if (j > 0 && !blockTypes[getBlock(i, j-1, k).ID].isFullOpaque 
                         && !(getBlock(i, j-1, k).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
-                        negativeYFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, NEGATIVE_Y, getBlock(i, j, k).ID));
                 }
             }
         }
         break;
     case POSITIVE_Z:
-        positiveZFaces.clear();
+        faces[orientation].clear();
         for (int k = 0; k < CHUNK_SIZE; k++) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int j = 0; j < CHUNK_SIZE; j++) {
@@ -351,16 +380,16 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk, std::ma
                         continue;
                     if (k == CHUNK_SIZE - 1 && !blockTypes[borderingChunk->getBlock(i, j, 0).ID].isFullOpaque 
                         && !(borderingChunk->getBlock(i, j, 0).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
-                        positiveZFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Z, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, POSITIVE_Z, getBlock(i, j, k).ID));
                     else if (k < CHUNK_SIZE-1 && !blockTypes[getBlock(i, j, k+1).ID].isFullOpaque 
                         && !(getBlock(i, j, k+1).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
-                        positiveZFaces.push_back(Face(x+i, y+j, z+k, POSITIVE_Z, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, POSITIVE_Z, getBlock(i, j, k).ID));
                 }
             }
         }
         break;
     case NEGATIVE_Z:
-        negativeZFaces.clear();
+        faces[orientation].clear();
         for (int k = CHUNK_SIZE-1; k >= 0; k--) {
             for (int i = 0; i < CHUNK_SIZE; i++) {
                 for (int j = 0; j < CHUNK_SIZE; j++) {
@@ -368,10 +397,10 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk, std::ma
                         continue;
                     if (k == 0 && !blockTypes[borderingChunk->getBlock(i, j, CHUNK_SIZE-1).ID].isFullOpaque 
                         && !(borderingChunk->getBlock(i, j, CHUNK_SIZE-1).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
-                        negativeZFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, getBlock(i, j, k).ID));
                     else if (k > 0 && !blockTypes[getBlock(i, j, k-1).ID].isFullOpaque 
                         && !(getBlock(i, j, k-1).ID == getBlock(i, j, k).ID && blockTypes[getBlock(i, j, k).ID].hideSameNeighbors))
-                        negativeZFaces.push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, getBlock(i, j, k).ID));
+                        faces[orientation].push_back(Face(x+i, y+j, z+k, NEGATIVE_Z, getBlock(i, j, k).ID));
                 }
             }
         }
@@ -379,20 +408,29 @@ void Chunk::generateMesh(Orientation orientation, Chunk *borderingChunk, std::ma
     }
     }
 
-    std::cout << "Done generating mesh for chunk at " << x << " " << y << " " << z << " " << positiveXFaces.size() << std::endl;
+    if (orientation == NUMBER_OF_ORIENTATIONS-1) {
+        int totalFaces = 0;
+        for (int i = 0; i < NUMBER_OF_ORIENTATIONS-1; i++) {
+            totalFaces += faces[i].size();
+        }
+        std::cout << "Done generating mesh for chunk at " << x << " " << y << " " << z << " with " << totalFaces << " total faces" << std::endl;
+    }
 } 
 
 void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
-        uint32_t vertexCount = vertices.size();
-        float textureX = blockTypes[face.blockID].textureCoordinates[face.orientation].first/8.0f, textureY = blockTypes[face.blockID].textureCoordinates[face.orientation].second/8.0f;
+        Orientation orientation = face.orientation;
+        uint32_t vertexCount = geometry.vertices.size();
+        std::vector<Vertex> &vertices = geometry.vertices;
+        std::vector<uint32_t> &indices = geometry.indices;
+        float textureX = blockTypes[face.blockID].textureCoordinates[orientation].first/8.0f, textureY = blockTypes[face.blockID].textureCoordinates[orientation].second/8.0f;
         float r = 1.0f, g = 1.0f, b = 1.0f;
-        uint32_t normalAndColor = packNormalAndColor(face.orientation, r, g, b);
+        uint32_t normalAndColor = packNormalAndColor(orientation, r, g, b);
 
-        switch (face.orientation) {
+        switch (orientation) {
         case POSITIVE_X:
             switch (face.blockID) {
             case 4:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 1.0f, 0.0f);
+                normalAndColor = packNormalAndColor(orientation, 0.0f, 1.0f, 0.0f);
                 vertices.push_back(Vertex{glm::vec3(face.position.x+1.000f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+1.000f, face.position.y+1.0f, face.position.z+0.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+1.000f, face.position.y+0.0f, face.position.z+1.0f), glm::vec2(textureX+1.0f/8.0f, textureY), normalAndColor});
@@ -405,9 +443,9 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+2);
                 vertexCount += 4;
 
-                textureX = blockTypes[3].textureCoordinates[face.orientation].first/8.0f;
-                textureY = blockTypes[3].textureCoordinates[face.orientation].second/8.0f;
-                normalAndColor = packNormalAndColor(face.orientation, 1.0f, 1.0f, 1.0f);
+                textureX = blockTypes[3].textureCoordinates[orientation].first/8.0f;
+                textureY = blockTypes[3].textureCoordinates[orientation].second/8.0f;
+                normalAndColor = packNormalAndColor(orientation, 1.0f, 1.0f, 1.0f);
                 vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec2(textureX+1.0f/8.0f, textureY), normalAndColor});
@@ -420,10 +458,10 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+2);
                 return;
             case 6:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.2f, 0.6f);
+                normalAndColor = packNormalAndColor(orientation, 0.0f, 0.2f, 0.6f);
                 break;
             case 8:
-                normalAndColor = packNormalAndColor(face.orientation, 0.1f, 0.8f, 0.0f);
+                normalAndColor = packNormalAndColor(orientation, 0.1f, 0.8f, 0.0f);
                 break;
             }
             vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
@@ -440,7 +478,7 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
         case NEGATIVE_X:
             switch (face.blockID) {
             case 4:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 1.0f, 0.0f);
+                normalAndColor = packNormalAndColor(orientation, 0.0f, 1.0f, 0.0f);
                 vertices.push_back(Vertex{glm::vec3(face.position.x-0.000f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x-0.000f, face.position.y+1.0f, face.position.z+0.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x-0.000f, face.position.y+0.0f, face.position.z+1.0f), glm::vec2(textureX+1.0f/8.0f, textureY), normalAndColor});
@@ -453,9 +491,9 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+0);
                 vertexCount += 4;
 
-                textureX = blockTypes[3].textureCoordinates[face.orientation].first/8.0f;
-                textureY = blockTypes[3].textureCoordinates[face.orientation].second/8.0f;
-                normalAndColor = packNormalAndColor(face.orientation, 1.0f, 1.0f, 1.0f);
+                textureX = blockTypes[3].textureCoordinates[orientation].first/8.0f;
+                textureY = blockTypes[3].textureCoordinates[orientation].second/8.0f;
+                normalAndColor = packNormalAndColor(orientation, 1.0f, 1.0f, 1.0f);
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec2(textureX+1.0f/8.0f, textureY), normalAndColor});
@@ -468,10 +506,10 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+0);
                 return;
             case 6:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.2f, 0.6f);
+                normalAndColor = packNormalAndColor(orientation, 0.0f, 0.2f, 0.6f);
                 break;
             case 8:
-                normalAndColor = packNormalAndColor(face.orientation, 0.1f, 0.8f, 0.0f);
+                normalAndColor = packNormalAndColor(orientation, 0.1f, 0.8f, 0.0f);
                 break;
             }
             vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
@@ -488,7 +526,7 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
         case POSITIVE_Y:
             switch (face.blockID) {
             case 4:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 1.0f, 0.0f);
+                normalAndColor = packNormalAndColor(orientation, 0.0f, 1.0f, 0.0f);
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.000f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.000f, face.position.z+0.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.000f, face.position.z+1.0f), glm::vec2(textureX+1.0f/8.0f, textureY), normalAndColor});
@@ -501,9 +539,9 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+0);
                 vertexCount += 4;
             
-                textureX = blockTypes[3].textureCoordinates[face.orientation].first/8.0f;
-                textureY = blockTypes[3].textureCoordinates[face.orientation].second/8.0f;
-                normalAndColor = packNormalAndColor(face.orientation, 1.0f, 1.0f, 1.0f);
+                textureX = blockTypes[3].textureCoordinates[orientation].first/8.0f;
+                textureY = blockTypes[3].textureCoordinates[orientation].second/8.0f;
+                normalAndColor = packNormalAndColor(orientation, 1.0f, 1.0f, 1.0f);
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec2(textureX+1.0f/8.0f, textureY), normalAndColor});
@@ -516,10 +554,10 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+0);
                 return;
             case 6:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.2f, 0.6f);
+                normalAndColor = packNormalAndColor(orientation, 0.0f, 0.2f, 0.6f);
                 break;
             case 8:
-                normalAndColor = packNormalAndColor(face.orientation, 0.1f, 0.8f, 0.0f);
+                normalAndColor = packNormalAndColor(orientation, 0.1f, 0.8f, 0.0f);
                 break;
             }
             vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
@@ -536,7 +574,7 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
         case NEGATIVE_Y:
             switch (face.blockID) {
             case 4:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 1.0f, 0.0f);
+                normalAndColor = packNormalAndColor(orientation, 0.0f, 1.0f, 0.0f);
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y-0.000f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y-0.000f, face.position.z+0.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y-0.000f, face.position.z+1.0f), glm::vec2(textureX+1.0f/8.0f, textureY), normalAndColor});
@@ -549,9 +587,9 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+2);
                 vertexCount += 4;
 
-                textureX = blockTypes[3].textureCoordinates[face.orientation].first/8.0f;
-                textureY = blockTypes[3].textureCoordinates[face.orientation].second/8.0f;
-                normalAndColor = packNormalAndColor(face.orientation, 1.0f, 1.0f, 1.0f);
+                textureX = blockTypes[3].textureCoordinates[orientation].first/8.0f;
+                textureY = blockTypes[3].textureCoordinates[orientation].second/8.0f;
+                normalAndColor = packNormalAndColor(orientation, 1.0f, 1.0f, 1.0f);
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec2(textureX+1.0f/8.0f, textureY), normalAndColor});
@@ -564,10 +602,10 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+2);
                 return;
             case 6:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.2f, 0.6f);
+                normalAndColor = packNormalAndColor(orientation, 0.0f, 0.2f, 0.6f);
                 break;
             case 8:
-                normalAndColor = packNormalAndColor(face.orientation, 0.1f, 0.8f, 0.0f);
+                normalAndColor = packNormalAndColor(orientation, 0.1f, 0.8f, 0.0f);
                 break;
             }
             vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
@@ -584,7 +622,7 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
         case POSITIVE_Z:
             switch (face.blockID) {
             case 4:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 1.0f, 0.0f);
+                normalAndColor = packNormalAndColor(orientation, 0.0f, 1.0f, 0.0f);
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec2(textureX, textureY), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+1.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
@@ -597,10 +635,10 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+2);
                 return;
             case 6:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.2f, 0.6f);
+                normalAndColor = packNormalAndColor(orientation, 0.0f, 0.2f, 0.6f);
                 break;
             case 8:
-                normalAndColor = packNormalAndColor(face.orientation, 0.1f, 0.8f, 0.0f);
+                normalAndColor = packNormalAndColor(orientation, 0.1f, 0.8f, 0.0f);
                 break;
             }
             vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+1.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normalAndColor});
@@ -617,8 +655,8 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
         case NEGATIVE_Z:
             switch (face.blockID) {
             case 4:
-                textureX = blockTypes[3].textureCoordinates[face.orientation].first/8.0f;
-                textureY = blockTypes[3].textureCoordinates[face.orientation].second/8.0f;
+                textureX = blockTypes[3].textureCoordinates[orientation].first/8.0f;
+                textureY = blockTypes[3].textureCoordinates[orientation].second/8.0f;
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+1.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX, textureY), normalAndColor});
                 vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+1.0f, face.position.z+0.0f), glm::vec2(textureX+1.0f/8.0f, textureY+1.0f/8.0f), normalAndColor});
@@ -631,10 +669,10 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
                 indices.push_back(vertexCount+0);
                 return;
             case 6:
-                normalAndColor = packNormalAndColor(face.orientation, 0.0f, 0.2f, 0.6f);
+                normalAndColor = packNormalAndColor(orientation, 0.0f, 0.2f, 0.6f);
                 break;
             case 8:
-                normalAndColor = packNormalAndColor(face.orientation, 0.1f, 0.8f, 0.0f);
+                normalAndColor = packNormalAndColor(orientation, 0.1f, 0.8f, 0.0f);
                 break;
             }
             vertices.push_back(Vertex{glm::vec3(face.position.x+0.0f, face.position.y+0.0f, face.position.z+0.0f), glm::vec2(textureX, textureY+1.0f/8.0f), normalAndColor});
@@ -652,48 +690,8 @@ void Chunk::uploadFace(Face &face, std::map<int, BlockType> &blockTypes) {
 }
 
 void Chunk::uploadFaces(Orientation orientation, std::map<int, BlockType> &blockTypes) {
-    switch (orientation) {
-    case POSITIVE_X:
-        for (Face &face : positiveXFaces) {
-            uploadFace(face, blockTypes);
-        }
-        break;
-    case NEGATIVE_X:
-        for (Face &face : negativeXFaces) {
-            uploadFace(face, blockTypes);
-        }
-        break;
-    case POSITIVE_Y:
-        for (Face &face : positiveYFaces) {
-            uploadFace(face, blockTypes);
-        }
-        break;
-    case NEGATIVE_Y:
-        for (Face &face : negativeYFaces) {
-            uploadFace(face, blockTypes);
-        }
-        break;
-    case POSITIVE_Z:
-        for (Face &face : positiveZFaces) {
-            uploadFace(face, blockTypes);
-        }
-        break;
-    case NEGATIVE_Z:
-        for (Face &face : negativeZFaces) {
-            uploadFace(face, blockTypes);
-        }
-        break;
+    geometry.vertexCount = 0;    
+    for (Face &face : faces[orientation]) {
+        uploadFace(face, blockTypes);
     }
-}
-
-void Chunk::uploadVertices() {
-    vertexCount = vertices.size();
-    VkDeviceSize bufferSize = vertexCount*sizeof(Vertex);
-    memcpy(vertexData, vertices.data(), bufferSize);
-}
-
-void Chunk::uploadIndices() {
-    indexCount = indices.size();
-    VkDeviceSize bufferSize = indexCount*sizeof(uint32_t);
-    memcpy(indexData, indices.data(), bufferSize);
 }
